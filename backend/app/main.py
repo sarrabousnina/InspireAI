@@ -55,16 +55,16 @@ Audience: {audience}. Tone: {tone}. Use H2/H3 headings, short paragraphs, and a 
 SYSTEM = "You are a helpful content writer. Be clear, on-brand, and practical. No fluff."
 
 # ---- Routes ----
-@app.get("/health")
+@app.get("/api/health")
 def health():
     return {"ok": True, "model": DEFAULT_MODEL, "has_key": bool(GROQ_API_KEY)}
 
-@app.get("/diag")
+@app.get("/api/diag")
 def diag():
     k = GROQ_API_KEY or ""
     return {"has_key": bool(k), "prefix": k[:4] if k else None, "len": len(k)}
 
-@app.post("/generate")
+@app.post("/api/generate")
 def generate(data: GenerateIn):
     if not GROQ_API_KEY:
         raise HTTPException(status_code=500, detail="GROQ_API_KEY not loaded")
