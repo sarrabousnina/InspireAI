@@ -1,47 +1,85 @@
+import { useState } from "react";
+import { generateContent } from "./lib/api";
+
 export default function App() {
-  return (
-    <div className="container">
-      <div className="card" style={{ marginTop: 24 }}>
-        <span className="badge">InspireAI · MVP</span>
-        <h1 style={{ margin: '12px 0 8px', fontSize: 32 }}>
-          InspireAI — AI Content Studio
-        </h1>
-        <p style={{ marginTop: 0, color: 'var(--muted)' }}>
-          React + Vite + CSS • FastAPI backend coming next
-        </p>
+  const [prompt, setPrompt] = useState("");
+  const [platform, setPlatform] = useState<"linkedin"|"instagram"|"facebook"|"blog">("linkedin");
+  const [tone, setTone] = useState<"professional"|"friendly"|"witty"|"persuasive">("professional");
+  const [audience, setAudience] = useState("SMBs / startups");
+  const [wordCount, setWordCount] = useState(120);
+  const [mode, setMode] = useState<"social"|"blog">("social");
+  const [out, setOut] = useState("");
+  const [loading, setLoading] = useState(false);
 
-        <div className="grid grid-2" style={{ marginTop: 20 }}>
-          <div className="card">
-            <h2 style={{ marginTop: 0 }}>What you’ll do here</h2>
-            <ul>
-              <li>Generate posts, blogs, and product copy</li>
-              <li>OCR images to extract text</li>
-              <li>Chat with a brand-aware assistant</li>
-              <li>Search your history with embeddings</li>
-            </ul>
-          </div>
-
-          <div className="card">
-            <h2 style={{ marginTop: 0 }}>API Status</h2>
-            <p id="api-status">Backend not connected yet</p>
-            <button className="btn" onClick={checkHealth}>
-              Check API
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// we'll use this after we add FastAPI
-async function checkHealth() {
-  const el = document.getElementById('api-status')!
-  try {
-    const r = await fetch('http://localhost:8000/health')
-    const data = await r.json()
-    el.textContent = `API: ${data.ok ? 'OK' : 'Not OK'}`
-  } catch {
-    el.textContent = 'API: not reachable'
+  async function go() {
+    setLoading(true); setOut("");
+    try {
+      const result = await generateContent({
+        prompt, platform, tone, audience,
+        word_count: wordCount, mode,
+        temperature: mode==="social" ? 0.7 : 0.6,
+      });
+      setOut(result);
+    } catch (e:any) { setOut(e.message || "Error"); }
+    finally { setLoading(false); }
   }
+
+  return (
+    <main style={{maxWidth:900,margin:"2rem auto",padding:"1rem"}}>
+      <h1>InspireAI — Content Studio</h1>
+
+      <div style={{display:"grid",gap:12,gridTemplateColumns:"1fr 1fr"}}>
+        <label>Platform
+          <select value={platform} onChange={e=>setPlatform(e.target.value as any)}>
+            <option value="linkedin">LinkedIn</option>
+            <option value="instagram">Instagram</option>
+            <option value="facebook">Facebook</option>
+            <option value="blog">Blog</option>
+          </select>
+        </label>
+
+        <label> Tone
+          <select value={tone} onChange={e=>setTone(e.target.value as any)}>
+            <option value="professional">Professional</option>
+            <option value="friendly">Friendly</option>
+            <option value="witty">Witty</option>
+            <option value="persuasive">Persuasive</option>
+          </select>
+        </label>
+
+        <label> Mode
+          <select value={mode} onChange={e=>setMode(e.target.value as any)}>
+            <option value="social">Social (8B fast)</option>
+            <option value="blog">Blog (70B quality)</option>
+          </select>
+        </label>
+
+        <label> Word count
+          <input type="number" value={wordCount}
+            onChange={e=>setWordCount(Number(e.target.value))}
+            min={60} max={1200}/>
+        </label>
+      </div>
+
+      <label style={{display:"block",marginTop:12}}>Audience
+        <input style={{width:"100%"}} value={audience} onChange={e=>setAudience(e.target.value)} />
+      </label>
+
+      <textarea
+        style={{width:"100%",height:160,marginTop:12}}
+        placeholder="Describe what you want to write…"
+        value={prompt} onChange={e=>setPrompt(e.target.value)}
+      />
+
+      <button onClick={go} disabled={loading} style={{marginTop:12}}>
+        {loading ? "Generating…" : "Generate"}
+      </button>
+
+      <div style={{marginTop:16}}>
+        <button onClick={()=>navigator.clipboard.writeText(out)} disabled={!out}>Copy</button>
+      </div>
+
+      <pre style={{whiteSpace:"pre-wrap",marginTop:12}}>{out}</pre>
+    </main>
+  );
 }
