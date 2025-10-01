@@ -54,3 +54,27 @@ export async function updateItem(id: string, body: any) {
   if (!res.ok) throw new Error("Update failed");
   return res.json();
 }
+
+// src/lib/api.ts
+export async function createItem(body: {
+  title?: string;
+  content: string;
+  platform: "linkedin" | "instagram" | "facebook" | "blog";
+  tone: "professional" | "friendly" | "witty" | "persuasive";
+  mode: "social" | "blog";
+  words: number;
+  model?: string;
+  tags?: string[];
+  pinned?: boolean;
+}) 
+
+
+{
+  const res: Response = await fetch(`/api/items`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { generateContent } from "./lib/api";
+// ✅ add createItem from the SAME file as generateContent
+import { generateContent, createItem } from "./lib/api";
 import "./app.css";
 
 export default function App() {
@@ -12,6 +13,12 @@ export default function App() {
   const [out, setOut] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // small helper to build a short title from the output or prompt
+  function makeTitle(text: string, fallback: string) {
+    const t = text.split(/\n|\. |\?/)[0]?.trim() || fallback.trim();
+    return t.length > 70 ? t.slice(0, 67) + "..." : t || "Untitled";
+  }
+
   async function go() {
     if (!prompt.trim()) return;
     setLoading(true); setOut("");
@@ -21,9 +28,27 @@ export default function App() {
         word_count: wordCount, mode,
         temperature: mode==="social" ? 0.7 : 0.6,
       });
+
       setOut(result);
-    } catch (e:any) { setOut(e.message || "Error"); }
-    finally { setLoading(false); }
+
+      // ✅ immediately persist to DB so it appears in /library
+      await createItem({
+        title: makeTitle(result, prompt),
+        content: result,
+        platform,
+        tone,
+        mode,
+        words: wordCount,
+        model: mode === "social" ? "llama-3.1-8b" : "llama-3.1-70b",
+        tags: [platform, tone],      // simple auto-tags
+        pinned: false,
+      });
+
+    } catch (e: any) {
+      setOut(e.message || "Error");
+    } finally {
+      setLoading(false);
+    }
   }
 
   const wordPresets = mode === "blog" ? [400, 600, 900] : [80, 120, 180];
@@ -161,6 +186,8 @@ export default function App() {
 
         <footer className="footer">
           <span>© InspireAI — built with FastAPI + Vite + Groq</span>
+          {/* Optional quick link to Library */}
+          <a className="ml-2 underline opacity-80 hover:opacity-100" href="/library">Library →</a>
         </footer>
       </div>
     </div>
