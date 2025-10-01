@@ -1,0 +1,163 @@
+/* =============== Variables =============== */
+:root {
+  --sb-w: 260px;
+  --sb-w-collapsed: 72px;
+  --sb-bg: #0b1220;
+  --sb-bg-2: #0f172a;
+  --sb-border: #1f2937;
+  --sb-text: #e5e7eb;
+  --sb-muted: #9ca3af;
+  --sb-link: #cbd5e1;
+  --sb-hover: #111827;
+  --sb-active: #1f2937;
+  --radius: 12px;
+  --fast: 180ms;
+}
+
+/* =============== Layout =============== */
+.sb-sidebar {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--sb-w);
+  background: linear-gradient(180deg, var(--sb-bg-2), #0b1220);
+  color: var(--sb-text);
+  display: flex;
+  flex-direction: column;
+  border-inline-end: 1px solid var(--sb-border);
+  transform: translateX(0);
+  transition: transform var(--fast) ease, width var(--fast) ease;
+  z-index: 50;
+}
+
+/* Brand */
+.sb-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--sb-border);
+  font-weight: 700;
+}
+.sb-brand-logo {
+  font-size: 18px;
+}
+.sb-brand-text {
+  white-space: nowrap;
+}
+
+/* Nav */
+.sb-nav {
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sb-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--sb-link);
+  transition: background var(--fast) ease, color var(--fast) ease, transform var(--fast) ease;
+}
+.sb-link:hover { background: var(--sb-hover); color: #fff; transform: translateX(2px); }
+.sb-active { background: var(--sb-active); color: #fff; }
+
+.sb-link-icon { font-size: 18px; width: 24px; text-align: center; }
+.sb-link-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Footer with collapse button */
+.sb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--sb-border);
+}
+.sb-version { font-size: 12px; color: var(--sb-muted); }
+.sb-collapse-btn {
+  background: transparent;
+  color: var(--sb-text);
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+/* Mobile top bar */
+.sb-topbar {
+  position: sticky;
+  top: 0;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--sb-bg);
+  color: var(--sb-text);
+  z-index: 40;
+  border-bottom: 1px solid var(--sb-border);
+}
+.sb-burger {
+  font-size: 22px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid #334155;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.sb-logo { font-weight: 700; }
+
+/* Backdrop for mobile */
+.sb-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 40;
+}
+
+/* =============== Collapsed (desktop) =============== */
+body.sb-collapsed .sb-sidebar { width: var(--sb-w-collapsed); }
+body.sb-collapsed .sb-brand-text { display: none; }
+body.sb-collapsed .sb-link-label { display: none; }
+body.sb-collapsed .sb-footer .sb-version { display: none; }
+
+/* Lightweight tooltip in collapsed mode */
+body.sb-collapsed .sb-link {
+  position: relative;
+}
+body.sb-collapsed .sb-link:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  inset-inline-start: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #111827;
+  color: #fff;
+  border: 1px solid var(--sb-border);
+  padding: 6px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+
+/* =============== Content offset =============== */
+@media (min-width: 769px) {
+  .sb-main { margin-left: var(--sb-w); transition: margin-left var(--fast) ease; }
+  body.sb-collapsed .sb-main { margin-left: var(--sb-w-collapsed); }
+}
+
+/* =============== Mobile behaviour =============== */
+@media (max-width: 768px) {
+  .sb-topbar { display: flex; }
+  .sb-sidebar { transform: translateX(-100%); }
+  .sb-sidebar.sb-open { transform: translateX(0); }
+  .sb-main { margin-left: 0 !important; }
+}
