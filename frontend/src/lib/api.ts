@@ -78,3 +78,21 @@ export async function createItem(body: {
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+//images upload
+export async function analyzeImage(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+
+  // If you set a Vite dev proxy (step 4), use the relative path:
+  const res = await fetch("/api/images/analyze", {
+    method: "POST",
+    body: fd,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Image analysis failed");
+  }
+  return (await res.json()) as { caption: string; tags: string[]; model: string };
+}

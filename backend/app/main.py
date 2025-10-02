@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
 from sqlalchemy import text
 from dotenv import load_dotenv
+from . import images
 import os
 
 # --- DB helpers ---
@@ -27,6 +28,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ---- Groq config ----
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -76,6 +78,9 @@ class ItemIn(BaseModel):
 class Item(ItemIn):
     id: str
     created_at: datetime
+
+
+app.include_router(images.router) 
 
 # ------------------- Health / Diag -------------------
 @app.get("/api/health")

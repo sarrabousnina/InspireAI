@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { generateContent, createItem } from "./lib/api";
+import ImageUploader from "./components/ImageUploader/ImageUploader"; // <-- NEW
 import "./app.css";
 
 export default function App() {
@@ -141,6 +142,23 @@ export default function App() {
             onChange={(e) => setPrompt(e.target.value)}
           />
         </label>
+
+        {/* 🔥 New: Image Upload */}
+        <ImageUploader
+          onResult={(r) => {
+            const merged = [
+              prompt,
+              r.caption ? `Image caption: ${r.caption}` : "",
+              r.tags?.length ? `Tags: ${r.tags.join(", ")}` : "",
+            ]
+              .filter(Boolean)
+              .join("\n");
+
+            setPrompt(merged);
+          }}
+          className="mt-3"
+        />
+
 
         <div className="actions">
           <button
