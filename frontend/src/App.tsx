@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { generateContent, createItem } from "./lib/api";
-import ImageUploader from "./components/ImageUploader/ImageUploader"; // <-- NEW
+import ImageUploader from "./components/ImageUploader/ImageUploader";
 import "./app.css";
-  import { useRef } from "react";
 
 export default function App() {
   const [prompt, setPrompt] = useState("");
@@ -13,7 +12,11 @@ export default function App() {
   const [mode, setMode] = useState<"social"|"blog">("social");
   const [out, setOut] = useState("");
   const [loading, setLoading] = useState(false);
-  const imgCounter = useRef(0); // <-- NEW
+
+  // NEW: collect image analysis
+  const [imageCaptions, setImageCaptions] = useState<string[]>([]);
+  const [imageTags, setImageTags] = useState<string[][]>([]);
+  const imgCounter = useRef(0);
 
   function makeTitle(text: string, fallback: string) {
     const t = text.split(/\n|\. |\?/)[0]?.trim() || fallback.trim();
@@ -26,10 +29,18 @@ export default function App() {
     setOut("");
     try {
       const result = await generateContent({
-        prompt, platform, tone, audience,
-        word_count: wordCount, mode,
+        prompt,
+        platform,
+        tone,
+        audience,
+        word_count: wordCount,
+        mode,
         temperature: mode === "social" ? 0.7 : 0.6,
+        // send image understanding to backend
+        image_captions: imageCaptions.length ? imageCaptions : undefined,
+        image_tags: imageTags.length ? imageTags : undefined,
       });
+
       setOut(result);
       await createItem({
         title: makeTitle(result, prompt),
@@ -145,22 +156,29 @@ export default function App() {
           />
         </label>
 
-        {/* 🔥 New: Image Upload */}
-  <ImageUploader
-  onResult={(r) => {
-  imgCounter.current += 1;
-  const n = imgCounter.current;
-  setPrompt(prev =>
-    [
-      prev.trim(),
-      `Image ${n} → ${r.caption}`,   // ✅ only caption string
-      r.tags?.length ? `Tags: ${r.tags.join(", ")}` : "",
-      "----"
-    ]
-      .filter(Boolean)
-      .join("\n")
-  );
-}}/>
+        {/* Images */}
+        <ImageUploader
+          className="mt-3"
+          onResult={(r) => {
+            // collect arrays to send to backend
+            setImageCaptions((prev) => [...prev, r.caption]);
+            setImageTags((prev) => [...prev, r.tags]);
+
+            // optional: human-readable note in the textarea (no JSON)
+            imgCounter.current += 1;
+            const n = imgCounter.current;
+            setPrompt((prev) =>
+              [
+                prev.trim(),
+                `Image ${n} → ${r.caption}`,
+                r.tags?.length ? `Tags: ${r.tags.join(", ")}` : "",
+                "----",
+              ]
+                .filter(Boolean)
+                .join("\n")
+            );
+          }}
+        />
 
         <div className="actions">
           <button

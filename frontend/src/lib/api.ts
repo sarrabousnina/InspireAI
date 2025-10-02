@@ -13,15 +13,16 @@ export type GenPayload = {
   temperature?: number;
 };
 
-export async function generateContent(payload: GenPayload) {
-  const res: Response = await fetch(`${API_URL}/generate`, {
+export async function generateContent(body: any) {
+  const res = await fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
-  return data.result as string;
+  const json = await res.json();
+  // backend returns { platform, mode, result }
+  return json.result as string;
 }
 
 // ✅ Add your Library API functions here

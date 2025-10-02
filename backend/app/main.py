@@ -29,7 +29,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # ---- Groq config ----
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "llama-3.1-8b-instant")
@@ -50,6 +49,10 @@ class GenerateIn(BaseModel):
     word_count: int = 120
     mode: Literal["social", "blog"] = "social"
     temperature: float = 0.7
+
+    # NEW: image understanding
+    image_captions: Optional[List[str]] = None             # e.g. ["latte with croissant", "modern cafe interior"]
+    image_tags: Optional[List[List[str]]] = None           # e.g. [["coffee","latte"], ["cafe","cozy","interior"]]
 
 PLAT_TEMPLATES = {
     "linkedin": """Write a LinkedIn post ({wc} words) about: {topic}.
@@ -79,8 +82,8 @@ class Item(ItemIn):
     id: str
     created_at: datetime
 
-
-app.include_router(images.router) 
+# include image routes
+app.include_router(images.router)
 
 # ------------------- Health / Diag -------------------
 @app.get("/api/health")
@@ -103,7 +106,37 @@ def generate(data: GenerateIn):
     model = DEFAULT_MODEL if data.mode == "social" else BLOG_MODEL
     wc = max(60, min(data.word_count, 1200 if data.mode == "blog" else 220))
     base = PLAT_TEMPLATES["blog" if data.platform == "blog" else data.platform]
-    user_prompt = base.format(wc=wc, topic=data.prompt, audience=data.audience, tone=data.tone)
+
+    # --- Merge image analysis into topic ---
+    topic = data.prompt.strip()
+
+    if data.image_captions and any(data.image_captions):
+        captions_text = "\n".join([f"- {c}" for c in data.image_captions if c])
+        topic += f"\n\nImages provided show:\n{captions_text}"
+
+    if data.image_tags and any(data.image_tags):
+        # Flatten and de-duplicate tags
+        flat_tags = []
+        for arr in data.image_tags:
+            if not arr:
+                continue
+            flat_tags.extend(arr)
+        tag_set = sorted({t.strip().lower() for t in flat_tags if t})
+        if tag_set:
+            topic += f"\n\nRelevant tags: {', '.join(tag_set)}"
+
+
+
+    print(">>> Received prompt:", data.prompt)
+    print(">>> Captions:", data.image_captions)
+    print(">>> Tags:", data.image_tags)
+    
+    user_prompt = base.format(
+        wc=wc,
+        topic=topic,
+        audience=data.audience,
+        tone=data.tone
+    )
 
     resp = client.chat.completions.create(
         model=model,
