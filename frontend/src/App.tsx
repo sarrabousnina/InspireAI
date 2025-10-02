@@ -2,6 +2,7 @@ import { useState } from "react";
 import { generateContent, createItem } from "./lib/api";
 import ImageUploader from "./components/ImageUploader/ImageUploader"; // <-- NEW
 import "./app.css";
+  import { useRef } from "react";
 
 export default function App() {
   const [prompt, setPrompt] = useState("");
@@ -12,6 +13,7 @@ export default function App() {
   const [mode, setMode] = useState<"social"|"blog">("social");
   const [out, setOut] = useState("");
   const [loading, setLoading] = useState(false);
+  const imgCounter = useRef(0); // <-- NEW
 
   function makeTitle(text: string, fallback: string) {
     const t = text.split(/\n|\. |\?/)[0]?.trim() || fallback.trim();
@@ -144,21 +146,21 @@ export default function App() {
         </label>
 
         {/* 🔥 New: Image Upload */}
-        <ImageUploader
-          onResult={(r) => {
-            const merged = [
-              prompt,
-              r.caption ? `Image caption: ${r.caption}` : "",
-              r.tags?.length ? `Tags: ${r.tags.join(", ")}` : "",
-            ]
-              .filter(Boolean)
-              .join("\n");
-
-            setPrompt(merged);
-          }}
-          className="mt-3"
-        />
-
+  <ImageUploader
+  onResult={(r) => {
+  imgCounter.current += 1;
+  const n = imgCounter.current;
+  setPrompt(prev =>
+    [
+      prev.trim(),
+      `Image ${n} → ${r.caption}`,   // ✅ only caption string
+      r.tags?.length ? `Tags: ${r.tags.join(", ")}` : "",
+      "----"
+    ]
+      .filter(Boolean)
+      .join("\n")
+  );
+}}/>
 
         <div className="actions">
           <button
