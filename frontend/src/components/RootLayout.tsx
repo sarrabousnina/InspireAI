@@ -6,9 +6,13 @@ export default function RootLayout() {
   return (
     <>
       <Sidebar />
-      <div className="sb-main">
-        <Outlet />
-      </div>
+      <main className="sb-main">
+        {/* This wrapper constrains page width nicely */}
+        <div className="page">
+          <Outlet />
+        </div>
+      </main>
     </>
   );
 }
+

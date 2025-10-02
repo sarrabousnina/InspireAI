@@ -68,7 +68,7 @@ body{
 /* ====== Grid ====== */
 .grid{
   width:min(1260px,100%);
-  margin:0 auto;
+  margin:0;
   padding:8px 0 40px;
   display:grid;
   grid-template-columns:1fr;
@@ -139,3 +139,5 @@ body{
   .card{ padding:22px; }
   .title{ font-size:2rem; }
 }
+
+

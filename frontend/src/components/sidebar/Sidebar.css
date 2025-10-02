@@ -1,26 +1,25 @@
-/* =============== Variables =============== */
-:root{
-  --sb-w: 260px;
-  --sb-w-collapsed: 72px;
-  --sb-bg: #ffffff;
+:root {
+  --sb-w: 220px;
+  --sb-w-collapsed: 64px;
+  --sb-link-h: 34px;   /* ↓ smaller height (was 36px) */
+  --sb-bg: #fff;
   --sb-border: #e5e7eb;
   --sb-text: #111827;
   --sb-muted:#6b7280;
   --sb-hover: rgba(99,102,241,.10);
   --sb-active: linear-gradient(135deg,#6366f1,#a855f7);
-  --radius: 12px;
-  --fast: 180ms;
+  --radius: 10px;      /* slightly smaller corners */
+  --fast: 160ms;
 }
 
-/* =============== Layout =============== */
+
+/* ================== Sidebar ================== */
 .sb-sidebar{
-  position: fixed;
-  inset: 0 auto 0 0;
+  position: fixed; inset: 0 auto 0 0;
   width: var(--sb-w);
   background: var(--sb-bg);
   color: var(--sb-text);
-  display: flex;
-  flex-direction: column;
+  display: flex; flex-direction: column;
   border-right: 1px solid var(--sb-border);
   box-shadow: 0 4px 12px rgba(0,0,0,.05);
   transform: translateX(0);
@@ -28,59 +27,123 @@
   z-index: 50;
 }
 
-/* Brand */
-.sb-brand{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--sb-border);font-weight:700;}
-.sb-brand-logo{font-size:18px}
-.sb-brand-text{white-space:nowrap}
-
-/* Nav */
-.sb-nav{padding:12px;display:grid;gap:8px;flex:1;overflow-y:auto}
-.sb-link{
-  display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--radius);
-  text-decoration:none;color:var(--sb-text);transition:background var(--fast) ease, color var(--fast) ease, transform var(--fast) ease;
+/* Brand row */
+.sb-brand{
+  display:flex; align-items:center; gap:10px;
+  padding:12px 12px;
+  border-bottom:1px solid var(--sb-border);
+  font-weight:700;
 }
-.sb-link:hover{background:var(--sb-hover);transform:translateX(2px)}
-.sb-active{background:var(--sb-active);color:#fff}
-.sb-link-icon{font-size:18px;width:24px;text-align:center}
-.sb-link-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-brand-logo{ font-size:18px; }
+.sb-brand-text{ white-space:nowrap; }
+
+/* Collapse icon (top-right of brand row) */
+.sb-collapse-icon{
+  margin-left:auto;
+  border:1px solid #cbd5e1;
+  background:#fff;
+  border-radius:8px;
+  padding:4px 8px;
+  cursor:pointer;
+  color:var(--sb-text);
+}
+
+/* Nav (shorter items) */
+.sb-nav{
+  padding:10px;
+  display:flex; flex-direction:column;
+  gap:6px;
+  flex:1; overflow-y:auto;
+}
+.sb-link {
+  display:flex; align-items:center; gap:10px;
+  height: var(--sb-link-h);
+  padding: 0 8px;                 /* tighter padding */
+  border-radius:8px;
+  font-size: 0.9rem;              /* slightly smaller font */
+  font-weight:500;                /* lighter */
+  color:var(--sb-text);
+  text-decoration:none;
+  transition: background var(--fast), color var(--fast), transform var(--fast);
+}
+
+.sb-link:hover{ background:var(--sb-hover); transform: translateX(2px); }
+.sb-active{ background:var(--sb-active); color:#fff; }
+.sb-link-icon{ width:20px; font-size:16px; text-align:center; line-height:1; }
+.sb-link-label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* Footer */
-.sb-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-top:1px solid var(--sb-border)}
-.sb-version{font-size:12px;color:var(--sb-muted)}
-.sb-collapse-btn{background:transparent;border:1px solid #cbd5e1;border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--sb-text)}
+.sb-footer{
+  display:flex; align-items:center; justify-content:flex-end; gap:8px;
+  padding:8px 10px; border-top:1px solid var(--sb-border);
+}
+.sb-version{ font-size:12px; color:var(--sb-muted); }
 
-/* Mobile top bar (if you use it) */
-.sb-topbar{position:sticky;top:0;display:none;align-items:center;gap:12px;padding:10px 12px;background:var(--sb-bg);color:var(--sb-text);z-index:40;border-bottom:1px solid var(--sb-border)}
-.sb-burger{font-size:22px;background:transparent;color:inherit;border:1px solid #cbd5e1;padding:6px 10px;border-radius:8px;cursor:pointer}
+/* ================== Mobile top bar ================== */
+.sb-topbar{
+  position:sticky; top:0; display:none;
+  align-items:center; gap:12px; padding:10px 12px;
+  background:var(--sb-bg); color:var(--sb-text);
+  z-index:40; border-bottom:1px solid var(--sb-border);
+}
+.sb-burger{
+  font-size:22px; background:transparent; color:inherit;
+  border:1px solid #cbd5e1; padding:6px 10px; border-radius:8px; cursor:pointer;
+}
+.sb-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:40; }
 
-/* Backdrop for mobile drawer */
-.sb-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40}
+/* ================== Collapsed (desktop) ================== */
+body.sb-collapsed .sb-sidebar{ width:var(--sb-w-collapsed); }
+body.sb-collapsed .sb-brand-text,
+body.sb-collapsed .sb-link-label,
+body.sb-collapsed .sb-version{ display:none; }
 
-/* =============== Collapsed (desktop) =============== */
-/* These rules were missing—this is why your collapse stopped working */
-body.sb-collapsed .sb-sidebar{width:var(--sb-w-collapsed)}
-body.sb-collapsed .sb-brand-text{display:none}
-body.sb-collapsed .sb-link-label{display:none}
-body.sb-collapsed .sb-footer .sb-version{display:none}
+/* Keep icons centered & same size when collapsed */
+body.sb-collapsed .sb-link{
+  justify-content: center;
+  padding: 0;
+  width: 100%;
+}
+body.sb-collapsed .sb-link-icon{
+  font-size: 20px;
+  width: auto;
+  text-align: center;
+}
 
-/* Simple tooltip in collapsed mode */
-body.sb-collapsed .sb-link{position:relative}
+/* Tooltip on hover in collapsed mode */
+body.sb-collapsed .sb-link{ position:relative; }
 body.sb-collapsed .sb-link:hover::after{
   content: attr(data-tip);
   position:absolute; left:calc(100% + 10px); top:50%; transform:translateY(-50%);
-  background:#111827; color:#fff; border:1px solid var(--sb-border); padding:6px 8px; border-radius:8px; white-space:nowrap; pointer-events:none; box-shadow:0 6px 18px rgba(0,0,0,.2);
+  background:#111827; color:#fff; border:1px solid var(--sb-border);
+  padding:6px 8px; border-radius:8px; white-space:nowrap; pointer-events:none;
+  box-shadow:0 6px 18px rgba(0,0,0,.2);
 }
 
-/* =============== Content offset =============== */
+/* ================== Content offset (desktop) ================== */
 @media (min-width: 769px){
-  .sb-main{ margin-left:var(--sb-w); transition: margin-left var(--fast) ease; }
-  body.sb-collapsed .sb-main{ margin-left:var(--sb-w-collapsed); }
+  .sb-main{
+    margin-left: var(--sb-w);
+    transition: margin-left var(--fast) ease;
+  }
+  body.sb-collapsed .sb-main{ margin-left: var(--sb-w-collapsed); }
 }
 
-/* =============== Mobile behaviour =============== */
+/* ================== Page width control ================== */
+/* Makes every page smaller & centered */
+.sb-main > .page{
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 0 var(--page-pad);
+  min-width: 0;
+}
+
+/* ================== Mobile behaviour ================== */
 @media (max-width: 768px){
-  .sb-topbar{display:flex}
+  .sb-topbar{ display:flex; }
   .sb-sidebar{ transform: translateX(-100%); }
   .sb-sidebar.sb-open{ transform: translateX(0); }
+
   .sb-main{ margin-left:0 !important; }
+  .sb-main > .page{ max-width: 100%; padding: 0 16px; }
 }
