@@ -97,3 +97,18 @@ export async function analyzeImage(file: File) {
   }
   return (await res.json()) as { caption: string; tags: string[]; model: string };
 }
+
+// frontend/src/lib/api.ts
+
+export async function addImageForItem(
+  itemId: string,
+  data: { url?: string; caption: string; tags: string[] }
+) {
+  const res = await fetch(`/api/images/attach/${itemId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}

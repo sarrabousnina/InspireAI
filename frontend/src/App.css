@@ -1,7 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 
+/* ===================== */
+/*        THEME          */
+/* ===================== */
 :root{
-  --bg: #f9fafb;
+  --bg:#f9fafb;
   --card:#ffffff;
   --line:#e5e7eb;
   --text:#111827;
@@ -9,30 +12,34 @@
   --brand:#6366f1;
   --brand2:#a855f7;
   --brand-grad: linear-gradient(135deg, var(--brand), var(--brand2));
-  --radius: 14px;
-  --radius-lg: 20px;
-  --shadow-md: 0 14px 36px rgba(0,0,0,.08);
-  --shadow-sm: 0 3px 10px rgba(0,0,0,.06);
-  --sb-w: 260px;
+  --radius:14px;
+  --radius-lg:20px;
+  --shadow-md:0 14px 36px rgba(0,0,0,.08);
+  --shadow-sm:0 3px 10px rgba(0,0,0,.06);
+  --sb-w:260px;
 }
 
-/* --- Global reset --- */
-*{ box-sizing: border-box; }
+/* ===================== */
+/*     GLOBAL RESET      */
+/* ===================== */
+*{ box-sizing:border-box; }
 html, body, #root{ height:100%; }
 html, body{ margin:0; padding:0; overflow-x:hidden; }
 body{
-  font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  font-family:'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color:var(--text);
   background:#fff;
 }
 
-/* ====== Layout ====== */
+/* ===================== */
+/*        LAYOUT         */
+/* ===================== */
 #root-layout{
   display:flex;
   min-height:100vh;
 }
 
-/* sidebar */
+/* Sidebar (if used elsewhere) */
 .sb-sidebar{
   flex:0 0 var(--sb-w);
   width:var(--sb-w);
@@ -57,15 +64,17 @@ body{
 }
 .nav-item:hover{ background:#f3f4f6; }
 
-/* main */
+/* Main wrapper */
 .sb-main{
   flex:1 1 auto;
   min-height:100vh;
-  background: linear-gradient(180deg,#ffffff,#f6f7fb);
+  background:linear-gradient(180deg,#ffffff,#f6f7fb);
   padding:32px 28px;
 }
 
-/* ====== Grid ====== */
+/* ===================== */
+/*         GRID          */
+/* ===================== */
 .grid{
   width:min(1260px,100%);
   margin:0;
@@ -79,7 +88,9 @@ body{
   .header,.footer{ grid-column:1 / -1; }
 }
 
-/* ===== Header ===== */
+/* ===================== */
+/*        HEADER         */
+/* ===================== */
 .header{ text-align:center; margin:4px 0 10px; }
 .title{
   font-size:clamp(2.2rem, 3.6vw, 3rem);
@@ -92,52 +103,164 @@ body{
 }
 .subtitle{ margin-top:8px; color:var(--muted); font-weight:600; }
 
-/* ===== Cards ===== */
+/* ===================== */
+/*        CARDS          */
+/* ===================== */
 .card{
   background:var(--card);
   border:1px solid var(--line);
   border-radius:var(--radius-lg);
   box-shadow:var(--shadow-md);
-  padding:28px;
+  padding:24px;              /* tighter than 28px */
   transition:transform .2s, box-shadow .2s;
 }
 .card:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(0,0,0,.12) }
 
-/* ===== Fields ===== */
-.field>span{ display:block; font-size:.95rem; color:var(--muted); margin:2px 0 8px; }
-.input{
-  width:100%; padding:14px 16px; font-size:1.02rem;
-  border:1px solid var(--line); border-radius:16px; background:#fff;
-}
-.input:focus{ border-color:var(--brand); outline:none; box-shadow:0 0 0 4px rgba(99,102,241,.18); }
-.textarea{ min-height:170px; resize:vertical; }
+/* ===================== */
+/*        FIELDS         */
+/* ===================== */
+.row.two{ display:grid; gap:16px; grid-template-columns:1fr 1fr; }
+@media(max-width:720px){ .row.two{ grid-template-columns:1fr; } }
 
-/* Chips */
+.field>span{
+  display:block;
+  font-size:.95rem;
+  color:var(--muted);
+  margin:2px 0 8px;
+}
+
+.input{
+  width:100%;
+  padding:12px 14px;         /* slightly tighter */
+  font-size:1rem;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+}
+.input:focus{
+  border-color:var(--brand);
+  outline:none;
+  box-shadow:0 0 0 4px rgba(99,102,241,.18);
+}
+
+.textarea{ min-height:140px; resize:vertical; }  /* smaller than 170px */
+
+/* Inline input + chips */
+.inline{ display:flex; gap:10px; align-items:center; }
 .chips{ display:flex; gap:10px; flex-wrap:wrap; }
 .chip{
-  border:1px solid var(--line); padding:8px 14px;
-  border-radius:999px; background:#f8fafc; cursor:pointer; font-weight:600;
+  border:1px solid var(--line);
+  padding:6px 12px;          /* tighter */
+  border-radius:999px;
+  background:#f8fafc;
+  cursor:pointer;
+  font-weight:600;
 }
 .chip.active{ background:var(--brand-grad); color:#fff; border:none; }
 
-/* Buttons */
-.btn{ border:none; font-weight:700; cursor:pointer; border-radius:18px; padding:12px 18px; }
-.btn-primary{ background:var(--brand-grad); color:#fff; box-shadow:var(--shadow-sm); }
+/* ===================== */
+/*       BUTTONS         */
+/* ===================== */
+.btn{
+  border:none;
+  font-weight:700;
+  cursor:pointer;
+  border-radius:18px;
+  padding:10px 16px;         /* tighter */
+}
+.btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+.btn-primary{
+  background:var(--brand-grad);
+  color:#fff;
+  box-shadow:var(--shadow-sm);
+}
 .btn-primary:hover{ transform:translateY(-1px); opacity:.95; }
 
-/* Output */
-.output-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
-.badge{ padding:6px 12px; border-radius:999px; border:1px solid var(--line); background:#f3f4f6; color:#4f46e5; font-weight:700; }
-.output-body{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; min-height:180px; }
+/* Ghost button (used in output header) */
+.btn-ghost{
+  background:#fff;
+  border:1px solid var(--line);
+  padding:8px 12px;
+  border-radius:14px;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn-ghost:hover{ background:#f8fafc; }
 
-/* Footer */
-.footer{ color:var(--muted); font-size:.92rem; text-align:center; padding-top:6px; }
+/* Actions row below form */
+.actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
 
-/* Mobile tweaks */
-@media(max-width:480px){
-  .sb-main{ padding:22px 16px; }
-  .card{ padding:22px; }
-  .title{ font-size:2rem; }
+/* ===================== */
+/*        OUTPUT         */
+/* ===================== */
+.output-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+.output-title{ display:flex; align-items:center; gap:10px; }
+
+.badge{
+  padding:6px 12px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:#f3f4f6;
+  color:#4f46e5;
+  font-weight:700;
 }
 
+.output-actions{ display:flex; gap:8px; }
 
+.output-body{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:16px;
+  min-height:200px;
+  max-height:420px;    /* keeps block compact */
+  overflow:auto;       /* scroll long output */
+}
+
+/* Make generated text look like normal text, wrapped */
+.out-pre{
+  margin:0;
+  white-space:pre-wrap;
+  word-break:break-word;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font-size:0.98rem;
+  line-height:1.6;
+  color:var(--text);
+}
+
+/* Loading skeletons */
+.skeleton{
+  height:14px;
+  border-radius:10px;
+  background: linear-gradient(90deg,#f3f4f6,#e5e7eb,#f3f4f6);
+  background-size:200% 100%;
+  animation: sk 1.2s infinite;
+  margin:10px 0;
+}
+.skeleton.w-80{ width:80%; } .skeleton.w-64{ width:64%; } .skeleton.w-56{ width:56%; }
+@keyframes sk{ 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ===================== */
+/*        FOOTER         */
+/* ===================== */
+.footer{
+  color:var(--muted);
+  font-size:.92rem;
+  text-align:center;
+  padding-top:6px;
+}
+
+/* ===================== */
+/*     MOBILE TWEAKS     */
+/* ===================== */
+@media(max-width:480px){
+  .sb-main{ padding:22px 16px; }
+  .card{ padding:20px; }
+  .title{ font-size:2rem; }
+}

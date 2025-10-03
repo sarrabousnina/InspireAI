@@ -8,6 +8,8 @@ from sqlalchemy import text
 from dotenv import load_dotenv
 from . import images
 import os
+import json
+
 
 # --- DB helpers ---
 from .db import ENGINE, init_db
@@ -65,7 +67,7 @@ Audience: {audience}. Tone: {tone}. Use 1–2 short paragraphs and 2 concise bul
     "blog": """Write a blog draft (~{wc} words) about: {topic}.
 Audience: {audience}. Tone: {tone}. Use H2/H3 headings, short paragraphs, and a 4-item checklist at the end."""
 }
-SYSTEM = "You are a helpful content writer. Be clear, on-brand, and practical. No fluff."
+SYSTEM = "You are a helpful content writer. Be clear, on-brand, and practical. No fluff. Be short and concise. And use creative hooks."
 
 class ItemIn(BaseModel):
     title: Optional[str] = None
@@ -130,7 +132,7 @@ def generate(data: GenerateIn):
     print(">>> Received prompt:", data.prompt)
     print(">>> Captions:", data.image_captions)
     print(">>> Tags:", data.image_tags)
-    
+
     user_prompt = base.format(
         wc=wc,
         topic=topic,
@@ -185,15 +187,46 @@ def list_items(q: Optional[str] = None,
     return {"items": rows}
 
 # Register both forms to avoid trailing-slash issues for POST
+# in backend/app/main.py
+
 @app.post("/api/items", response_model=Item)
 @app.post("/api/items/", response_model=Item)
 def create_item(body: ItemIn):
+    # compatibility Pydantic v2/v1
+    if hasattr(body, "model_dump"):
+        payload = body.model_dump()
+    else:
+        payload = body.dict()
+
+    # Normalize tags -> JSON string so raw SQL binding is consistent
+    tags_val = payload.get("tags") or []
+    if isinstance(tags_val, str):
+        try:
+            tags_val = json.loads(tags_val)
+        except Exception:
+            tags_val = [tags_val]
+    if not isinstance(tags_val, (list, tuple)):
+        tags_val = [str(tags_val)]
+
+    payload["tags"] = json.dumps(tags_val)
+
     with ENGINE.begin() as c:
         row = c.execute(text("""
           INSERT INTO items (title, content, platform, tone, mode, words, model, tags, pinned)
           VALUES (:title, :content, :platform, :tone, :mode, :words, :model, :tags, :pinned)
           RETURNING id::text AS id, title, content, platform, tone, mode, words, model, tags, pinned, created_at
-        """), body.model_dump()).mappings().first()
+        """), payload).mappings().first()
+
+    # Normalize returned tags similar to images route
+    if row:
+        rt = row.get("tags")
+        if isinstance(rt, str):
+            try:
+                rt = json.loads(rt)
+            except Exception:
+                rt = [rt] if rt else []
+        row = {**row, "tags": rt or []}
+
     return row
 
 @app.patch("/api/items/{id}", response_model=Item)

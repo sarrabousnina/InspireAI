@@ -151,3 +151,53 @@
 /* ---------- Utilities ---------- */
 .lib .muted{ color: var(--lib-muted); }
 .lib .right{ margin-left:auto; }
+
+/* ---- Media strip inside card ---- */
+.lib-media{
+  margin: 10px 0 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.lib-thumb{
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--lib-border);
+  background: #f8fafc;
+  box-shadow: 0 2px 8px rgba(2,6,23,.05);
+  transition: transform .15s ease, box-shadow .15s ease;
+  aspect-ratio: 4 / 3;            /* neat, consistent thumbs */
+}
+.lib-thumb:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(2,6,23,.10);
+}
+
+.lib-thumb img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;               /* crop nicely */
+  display: block;
+}
+
+/* "+N" overlay on the last visible thumb */
+.lib-more-badge{
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(15,23,42,.45);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: .3px;
+  backdrop-filter: blur(2px);
+}
+
+/* Mobile: 2 per row looks better on small screens */
+@media (max-width: 540px){
+  .lib-media{ grid-template-columns: repeat(2, 1fr); }
+}

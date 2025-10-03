@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { generateContent, createItem } from "./lib/api";
+import { generateContent, createItem, addImageForItem } from "./lib/api";
 import ImageUploader from "./components/ImageUploader/ImageUploader";
 import "./app.css";
 
@@ -23,39 +23,68 @@ export default function App() {
     return t.length > 70 ? t.slice(0, 67) + "..." : t || "Untitled";
   }
 
-  async function go() {
-    if (!prompt.trim()) return;
-    setLoading(true);
-    setOut("");
-    try {
-      const result = await generateContent({
-        prompt,
-        platform,
-        tone,
-        audience,
-        word_count: wordCount,
-        mode,
-        temperature: mode === "social" ? 0.7 : 0.6,
-        // send image understanding to backend
-        image_captions: imageCaptions.length ? imageCaptions : undefined,
-        image_tags: imageTags.length ? imageTags : undefined,
-      });
+async function go() {
+  if (!prompt.trim()) return;
+  setLoading(true);
+  setOut("");
 
-      setOut(result);
-      await createItem({
-        title: makeTitle(result, prompt),
-        content: result,
-        platform, tone, mode, words: wordCount,
-        model: mode === "social" ? "llama-3.1-8b" : "llama-3.1-70b",
-        tags: [platform, tone],
-        pinned: false,
-      });
-    } catch (e: any) {
-      setOut(e.message || "Error");
-    } finally {
-      setLoading(false);
+  try {
+    // 1) Generate copy (uses image_captions / image_tags for better context)
+    const result = await generateContent({
+      prompt,
+      platform,
+      tone,
+      audience,
+      word_count: wordCount,
+      mode,
+      temperature: mode === "social" ? 0.7 : 0.6,
+      image_captions: imageCaptions.length ? imageCaptions : undefined,
+      image_tags: imageTags.length ? imageTags : undefined,
+    });
+    setOut(result);
+
+    // 2) Save the post itself
+    const saved = await createItem({
+      title: makeTitle(result, prompt),
+      content: result,
+      platform,
+      tone,
+      mode,
+      words: wordCount,
+      model: mode === "social" ? "llama-3.1-8b" : "llama-3.1-70b",
+      tags: [platform, tone],
+      pinned: false,
+    });
+
+    // 3) Attach each analyzed image to the saved post (if any)
+    if (imageCaptions.length) {
+      const tasks = imageCaptions.map((cap, i) =>
+        addImageForItem(saved.id, {
+          caption: cap,
+          tags: imageTags[i] || [],
+          // url: add later when you persist actual files
+        })
+      );
+      try {
+        await Promise.all(tasks);
+      } catch (err) {
+        // Don’t fail the whole flow if image attach has a hiccup
+        console.warn("Failed to attach one or more images:", err);
+      }
     }
+
+    // 4) (Optional) reset image context for next run
+    // setImageCaptions([]);
+    // setImageTags([]);
+    // imgCounter.current = 0;
+
+  } catch (e: any) {
+    setOut(e.message || "Error");
+  } finally {
+    setLoading(false);
   }
+}
+
 
   const wordPresets = mode === "blog" ? [400, 600, 900] : [80, 120, 180];
 
@@ -215,11 +244,41 @@ export default function App() {
 
       <section className="card output">
         <div className="output-head">
-          <h2>Output</h2>
-          <small className="badge">
-            {mode === "social" ? "Llama-3.1-8B" : "Llama-3.1-70B"}
-          </small>
+          <div className="output-title">
+            <h2>Output</h2>
+            <small className="badge">
+              {mode === "social" ? "Llama-3.1-8B" : "Llama-3.1-70B"}
+            </small>
+          </div>
+
+          <div className="output-actions">
+            <button
+              className="btn btn-ghost"
+              onClick={() => out && navigator.clipboard.writeText(out)}
+              disabled={!out}
+              title="Copy to clipboard"
+            >
+              Copy
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                if (!out) return;
+                const blob = new Blob([out], { type: "text/markdown" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = `inspire-${platform}-${mode}.md`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+              }}
+              disabled={!out}
+              title="Download .md"
+            >
+              Download
+            </button>
+          </div>
         </div>
+
         <div className={`output-body ${loading ? "loading" : ""}`}>
           {loading ? (
             <>
@@ -229,7 +288,7 @@ export default function App() {
               <div className="skeleton w-56" />
             </>
           ) : (
-            <pre>{out || "Your content will appear here…"}</pre>
+            <pre className="out-pre">{out || "Your content will appear here…"}</pre>
           )}
         </div>
       </section>

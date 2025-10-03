@@ -14,7 +14,10 @@ type Item = {
   tags: string[];
   pinned: boolean;
   created_at: string; // ISO
+
+  images?: string[];   // <— NEW: array of image URLs
 };
+
 
 function fmtDate(iso: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -183,6 +186,28 @@ function Card({
       <h3 className="lib-title">{item.title || "(Untitled)"}</h3>
 
       <div className="lib-content">{item.content}</div>
+      {(item.images?.length ?? 0) > 0 && (
+  <div className="lib-media">
+    {item.images!.slice(0, 3).map((src, idx) => {
+      const remaining = item.images!.length - 3;
+      const showMore = idx === 2 && remaining > 0;
+      return (
+        <a
+          key={src + idx}
+          className="lib-thumb"
+          href={src}
+          target="_blank"
+          rel="noreferrer"
+          title="Open image"
+        >
+          <img src={src} alt={`image ${idx + 1}`} loading="lazy" />
+          {showMore && <span className="lib-more-badge">+{remaining}</span>}
+        </a>
+      );
+    })}
+  </div>
+)}
+
 
       {item.tags.length > 0 && (
         <div className="lib-tags">
