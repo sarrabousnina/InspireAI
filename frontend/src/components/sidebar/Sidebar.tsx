@@ -83,6 +83,7 @@ export default function Sidebar() {
           <span className="sb-version">v1.0.0</span>
         </div>
       </aside>
+      
 
       {open && <div className="sb-backdrop" onClick={closeMobile} />}
     </>
