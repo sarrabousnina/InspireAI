@@ -4,7 +4,7 @@
 
   import RootLayout from "./components/RootLayout";
   import Home from "./App";
-  import Library from "./pages/Library"; // your real page or stub
+  import Library from "./pages/Library/Library"; // your real page or stub
   import Login from "./pages/Login/Login";
   import "./app.css";
 import SignUp from "./pages/SignUp/SignUp";

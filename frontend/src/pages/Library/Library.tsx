@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getItems, deleteItem, duplicateItem, updateItem } from "../lib/api";
+import { getItems, deleteItem, duplicateItem, updateItem } from "../../lib/api";
 import "./Library.css";
 
 type Item = {
@@ -14,10 +14,8 @@ type Item = {
   tags: string[];
   pinned: boolean;
   created_at: string; // ISO
-
-  images?: string[];   // <— NEW: array of image URLs
+  images?: string[];
 };
-
 
 function fmtDate(iso: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -27,6 +25,8 @@ function fmtDate(iso: string) {
 }
 
 export default function Library() {
+  const userIdRaw = localStorage.getItem("user_id");
+  const userId = userIdRaw === null ? undefined : userIdRaw;
   const [q, setQ] = useState("");
   const [platform, setPlatform] = useState<string>("all");
   const [tone, setTone] = useState<string>("all");
@@ -34,11 +34,14 @@ export default function Library() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  
+const user_id = userIdRaw && userIdRaw !== "undefined" && userIdRaw !== "null" ? userIdRaw : undefined;
 
-  const filters = useMemo(
-    () => ({ q, platform, tone, page, pageSize: 20 }),
-    [q, platform, tone, page]
-  );
+const filters = useMemo(() => {
+  const f: Record<string, any> = { q, platform, tone, page, pageSize: 20 };
+  if (user_id) f.user_id = user_id;  // Only add if a real value
+  return f;
+}, [q, platform, tone, page, user_id]);
 
   useEffect(() => {
     let alive = true;
@@ -75,8 +78,6 @@ export default function Library() {
   return (
     <div className="lib">
       <h1>Library</h1>
-
-      {/* Filters */}
       <div className="lib-filters">
         <input
           className="lib-input"
@@ -115,7 +116,6 @@ export default function Library() {
         </select>
       </div>
 
-      {/* Pinned */}
       {pinned.length > 0 && (
         <section className="lib-section">
           <h2>Pinned</h2>
@@ -133,7 +133,6 @@ export default function Library() {
         </section>
       )}
 
-      {/* All items */}
       <div className="lib-grid">
         {regular.map((i) => (
           <Card
@@ -146,7 +145,6 @@ export default function Library() {
         ))}
       </div>
 
-      {/* Load more */}
       <div className="lib-more">
         {hasMore && (
           <button
@@ -182,33 +180,29 @@ function Card({
         <span className="lib-chip small">{item.model}</span>
         <span className="right muted">{fmtDate(item.created_at)}</span>
       </div>
-
       <h3 className="lib-title">{item.title || "(Untitled)"}</h3>
-
       <div className="lib-content">{item.content}</div>
       {(item.images?.length ?? 0) > 0 && (
-  <div className="lib-media">
-    {item.images!.slice(0, 3).map((src, idx) => {
-      const remaining = item.images!.length - 3;
-      const showMore = idx === 2 && remaining > 0;
-      return (
-        <a
-          key={src + idx}
-          className="lib-thumb"
-          href={src}
-          target="_blank"
-          rel="noreferrer"
-          title="Open image"
-        >
-          <img src={src} alt={`image ${idx + 1}`} loading="lazy" />
-          {showMore && <span className="lib-more-badge">+{remaining}</span>}
-        </a>
-      );
-    })}
-  </div>
-)}
-
-
+        <div className="lib-media">
+          {item.images!.slice(0, 3).map((src, idx) => {
+            const remaining = item.images!.length - 3;
+            const showMore = idx === 2 && remaining > 0;
+            return (
+              <a
+                key={src + idx}
+                className="lib-thumb"
+                href={src}
+                target="_blank"
+                rel="noreferrer"
+                title="Open image"
+              >
+                <img src={src} alt={`image ${idx + 1}`} loading="lazy" />
+                {showMore && <span className="lib-more-badge">+{remaining}</span>}
+              </a>
+            );
+          })}
+        </div>
+      )}
       {item.tags.length > 0 && (
         <div className="lib-tags">
           {item.tags.map((t) => (
@@ -218,7 +212,6 @@ function Card({
           ))}
         </div>
       )}
-
       <div className="lib-actions">
         <button
           className="lib-btn"
@@ -227,14 +220,12 @@ function Card({
         >
           {item.pinned ? "Unpin" : "Pin"}
         </button>
-
         <button
           className="lib-btn"
           onClick={() => navigator.clipboard.writeText(item.content)}
         >
           Copy
         </button>
-
         <a
           className="lib-btn"
           download={`${(item.title || "content").replace(/[^\w\-]+/g, "_")}.txt`}
@@ -242,13 +233,10 @@ function Card({
         >
           Download
         </a>
-
         <button className="lib-btn" onClick={() => onDuplicate(item.id)}>
           Duplicate
         </button>
-
         <span className="spacer" />
-
         <button className="lib-btn danger" onClick={() => onDelete(item.id)}>
           Delete
         </button>

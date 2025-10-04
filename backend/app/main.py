@@ -1,14 +1,14 @@
-# backend/app/main.py
 import os
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime, timedelta
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-from jose import jwt
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 from . import images
 import json
@@ -48,13 +48,26 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 def on_startup():
     init_db()
 
-# --- Dependency for DB session ---
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+# --------- JWT User Dependency ---------
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
+
+def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+    credentials_exception = HTTPException(status_code=401, detail="Could not validate credentials")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("user_id")
+        if user_id is None:
+            raise credentials_exception
+        return {"user_id": user_id, "username": payload.get("sub")}
+    except JWTError:
+        raise credentials_exception
 
 # ------------------- Schemas -------------------
 class GenerateIn(BaseModel):
@@ -94,6 +107,7 @@ class ItemIn(BaseModel):
 
 class Item(ItemIn):
     id: str
+    user_id: str
     created_at: datetime
 
 class UserLogin(BaseModel):
@@ -107,7 +121,6 @@ class Token(BaseModel):
 # --- image routes ---
 app.include_router(images.router)
 
-# ------------------- Health / Diag -------------------
 @app.get("/api/health")
 def health():
     with ENGINE.begin() as c:
@@ -119,7 +132,6 @@ def diag():
     k = GROQ_API_KEY or ""
     return {"has_key": bool(k), "prefix": k[:4] if k else None, "len": len(k)}
 
-# ------------------- JWT Auth Utilities -------------------
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -129,7 +141,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# ------------------- User Login -------------------
 @app.post("/api/login", response_model=Token)
 def login(user: UserLogin, db: Session = Depends(get_db)):
     result = db.execute(
@@ -139,9 +150,9 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     if not result or not verify_password(user.password, result.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": result.username, "user_id": str(result.id)})
-    return {"access_token": token, "token_type": "bearer"}
+    return {"access_token": token, "token_type": "bearer", "user_id": str(result.id)}  # <-- includes user_id!
 
-# ------------------- User Register (recommended: remove or protect in prod) -------------------
+
 import traceback
 
 @app.post("/api/register")
@@ -159,11 +170,9 @@ def register(user: UserLogin, db: Session = Depends(get_db)):
         db.commit()
         return {"id": row.id, "username": row.username, "created_at": row.created_at}
     except Exception as e:
-        # Print full stack trace!
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
-# ------------------- Generate -------------------
 @app.post("/api/generate")
 def generate(data: GenerateIn):
     if not client:
@@ -208,15 +217,18 @@ def generate(data: GenerateIn):
         "result": resp.choices[0].message.content.strip(),
     }
 
-# ------------------- Library CRUD -------------------
 @app.get("/api/items")
 def list_items(q: Optional[str] = None,
                platform: Optional[str] = None,
                tone: Optional[str] = None,
                page: int = 1,
-               pageSize: int = 20):
+               pageSize: int = 20,
+               user_id: Optional[str] = None):  # <-- add user_id param
     off = (page - 1) * pageSize
     where, params = [], {}
+    if user_id:  # <-- add this filter
+        where.append("user_id = :user_id")
+        params["user_id"] = user_id
     if q:
         where.append("(title ILIKE :q OR content ILIKE :q)")
         params["q"] = f"%{q}%"
@@ -227,7 +239,7 @@ def list_items(q: Optional[str] = None,
         where.append("tone = :tone")
         params["tone"] = tone
     sql = """
-      SELECT id::text AS id, title, content, platform, tone, mode, words, model, tags, pinned, created_at
+      SELECT id::text AS id, title, content, platform, tone, mode, words, model, tags, pinned, user_id, created_at
       FROM items
     """
     if where:
@@ -239,7 +251,7 @@ def list_items(q: Optional[str] = None,
 
 @app.post("/api/items", response_model=Item)
 @app.post("/api/items/", response_model=Item)
-def create_item(body: ItemIn):
+def create_item(body: ItemIn, user: dict = Depends(get_current_user)):
     if hasattr(body, "model_dump"):
         payload = body.model_dump()
     else:
@@ -252,12 +264,13 @@ def create_item(body: ItemIn):
             tags_val = [tags_val]
     if not isinstance(tags_val, (list, tuple)):
         tags_val = [str(tags_val)]
-    payload["tags"] = json.dumps(tags_val)
+    payload["tags"] = tags_val  # Pass as a Python list, NOT a string!
+    payload["user_id"] = user["user_id"]
     with ENGINE.begin() as c:
         row = c.execute(text("""
-          INSERT INTO items (title, content, platform, tone, mode, words, model, tags, pinned)
-          VALUES (:title, :content, :platform, :tone, :mode, :words, :model, :tags, :pinned)
-          RETURNING id::text AS id, title, content, platform, tone, mode, words, model, tags, pinned, created_at
+          INSERT INTO items (title, content, platform, tone, mode, words, model, tags, pinned, user_id)
+          VALUES (:title, :content, :platform, :tone, :mode, :words, :model, :tags, :pinned, :user_id)
+          RETURNING id::text AS id, title, content, platform, tone, mode, words, model, tags, pinned, user_id, created_at
         """), payload).mappings().first()
     if row:
         rt = row.get("tags")
@@ -266,7 +279,9 @@ def create_item(body: ItemIn):
                 rt = json.loads(rt)
             except Exception:
                 rt = [rt] if rt else []
-        row = {**row, "tags": rt or []}
+        user_id_val = row.get("user_id")
+        # Ensure tags is always a list and user_id is always a string for the response schema
+        row = {**row, "tags": rt or [], "user_id": str(user_id_val) if user_id_val is not None else None}
     return row
 
 @app.patch("/api/items/{id}", response_model=Item)
@@ -279,7 +294,7 @@ def update_item(id: str, body: Dict[str, Any]):
         row = c.execute(text(f"""
           UPDATE items SET {sets}
           WHERE id = :id
-          RETURNING id::text AS id, title, content, platform, tone, mode, words, model, tags, pinned, created_at
+          RETURNING id::text AS id, title, content, platform, tone, mode, words, model, tags, pinned, user_id, created_at
         """), {**allowed, "id": id}).mappings().first()
     if not row:
         raise HTTPException(404, "Not found")
@@ -297,10 +312,10 @@ def delete_item(id: str):
 def duplicate_item(id: str):
     with ENGINE.begin() as c:
         row = c.execute(text("""
-          INSERT INTO items (title, content, platform, tone, mode, words, model, tags, pinned)
-          SELECT title, content, platform, tone, mode, words, model, tags, FALSE
+          INSERT INTO items (title, content, platform, tone, mode, words, model, tags, pinned, user_id)
+          SELECT title, content, platform, tone, mode, words, model, tags, FALSE, user_id
           FROM items WHERE id = :id
-          RETURNING id::text AS id, title, content, platform, tone, mode, words, model, tags, pinned, created_at
+          RETURNING id::text AS id, title, content, platform, tone, mode, words, model, tags, pinned, user_id, created_at
         """), {"id": id}).mappings().first()
     if not row:
         raise HTTPException(404, "Not found")

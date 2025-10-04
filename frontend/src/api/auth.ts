@@ -6,6 +6,7 @@ const API_URL = 'http://localhost:8000/api';
 export interface LoginResponse {
   access_token: string;
   token_type: string;
+  user_id: string;  
 }
 
 export interface RegisterResponse {
@@ -20,6 +21,8 @@ export async function login(
   password: string
 ): Promise<LoginResponse> {
   const response = await axios.post<LoginResponse>(`${API_URL}/login`, { username, password });
+  localStorage.setItem('token', response.data.access_token);
+  localStorage.setItem('user_id', response.data.user_id);
   return response.data;
 }
 
