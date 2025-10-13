@@ -20,6 +20,17 @@ def init_db() -> None:
     with ENGINE.begin() as c:
         # PostgreSQL UUID support
         c.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto;"))
+        
+        # Users table for JWT auth
+        c.execute(text("""
+        CREATE TABLE IF NOT EXISTS users (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            username TEXT UNIQUE NOT NULL,
+            hashed_password TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+        """))
+        
         # Items table for Library page
         c.execute(text("""
         CREATE TABLE IF NOT EXISTS items (
@@ -33,15 +44,8 @@ def init_db() -> None:
             model TEXT,
             tags TEXT[] NOT NULL DEFAULT '{}',
             pinned BOOLEAN NOT NULL DEFAULT FALSE,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        );
-        """))
-        # Users table for JWT auth (new)
-        c.execute(text("""
-        CREATE TABLE IF NOT EXISTS users (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            username TEXT UNIQUE NOT NULL,
-            hashed_password TEXT NOT NULL,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            user_id UUID NOT NULL,  -- ← This was missing!
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
         """))

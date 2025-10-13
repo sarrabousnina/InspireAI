@@ -30,11 +30,15 @@ export async function generateContent(body: any) {
   return json.result as string;
 }
 
-export async function getItems(params: { q?: string; platform?: string; tone?: string; page?: number; pageSize?: number; user_id?: string }) {
-   const qs = new URLSearchParams(
+export async function getItems(params: { q?: string; platform?: string; tone?: string; page?: number; pageSize?: number }) {
+  const qs = new URLSearchParams(
     Object.entries(params).filter(([, v]) => v !== undefined && v !== "all") as any
   );
-  const res: Response = await fetch(`/api/items?${qs.toString()}`);
+  
+  const res: Response = await fetch(`/api/items?${qs.toString()}`, {
+    headers: getAuthHeader()  // ← Add this line!
+  });
+  
   if (!res.ok) throw new Error("Failed to load items");
   return res.json();
 }

@@ -24,6 +24,11 @@ function fmtDate(iso: string) {
   }).format(new Date(iso));
 }
 
+// Helper to clean markdown bold syntax (remove **)
+const cleanMarkdown = (text: string) => {
+  return text.replace(/\*\*/g, "");
+};
+
 export default function Library() {
   const userIdRaw = localStorage.getItem("user_id");
   const userId = userIdRaw === null ? undefined : userIdRaw;
@@ -34,14 +39,14 @@ export default function Library() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  
-const user_id = userIdRaw && userIdRaw !== "undefined" && userIdRaw !== "null" ? userIdRaw : undefined;
 
-const filters = useMemo(() => {
-  const f: Record<string, any> = { q, platform, tone, page, pageSize: 20 };
-  if (user_id) f.user_id = user_id;  // Only add if a real value
-  return f;
-}, [q, platform, tone, page, user_id]);
+  const user_id = userIdRaw && userIdRaw !== "undefined" && userIdRaw !== "null" ? userIdRaw : undefined;
+
+  const filters = useMemo(() => {
+    const f: Record<string, any> = { q, platform, tone, page, pageSize: 20 };
+    if (user_id) f.user_id = user_id;
+    return f;
+  }, [q, platform, tone, page, user_id]);
 
   useEffect(() => {
     let alive = true;
@@ -63,10 +68,12 @@ const filters = useMemo(() => {
     await deleteItem(id);
     setItems((prev) => prev.filter((it) => it.id !== id));
   }
+
   async function onDuplicate(id: string) {
     const newItem = await duplicateItem(id);
     setItems((prev) => [newItem, ...prev]);
   }
+
   async function onTogglePin(id: string, pinned: boolean) {
     const updated = await updateItem(id, { pinned: !pinned });
     setItems((prev) => prev.map((it) => (it.id === id ? updated : it)));
@@ -78,6 +85,7 @@ const filters = useMemo(() => {
   return (
     <div className="lib">
       <h1>Library</h1>
+
       <div className="lib-filters">
         <input
           className="lib-input"
@@ -171,6 +179,9 @@ function Card({
   onDuplicate: (id: string) => void;
   onTogglePin: (id: string, pinned: boolean) => void;
 }) {
+  const cleanedTitle = cleanMarkdown(item.title || "(Untitled)");
+  const cleanedContent = cleanMarkdown(item.content);
+
   return (
     <article className="lib-card">
       <div className="lib-meta">
@@ -180,8 +191,14 @@ function Card({
         <span className="lib-chip small">{item.model}</span>
         <span className="right muted">{fmtDate(item.created_at)}</span>
       </div>
-      <h3 className="lib-title">{item.title || "(Untitled)"}</h3>
-      <div className="lib-content">{item.content}</div>
+
+      <h3 className="lib-title">{cleanedTitle}</h3>
+
+      <div className="lib-content">
+        {/* For blog posts, you might want to render as HTML later */}
+        <p>{cleanedContent}</p>
+      </div>
+
       {(item.images?.length ?? 0) > 0 && (
         <div className="lib-media">
           {item.images!.slice(0, 3).map((src, idx) => {
@@ -203,42 +220,44 @@ function Card({
           })}
         </div>
       )}
+
       {item.tags.length > 0 && (
         <div className="lib-tags">
           {item.tags.map((t) => (
             <span key={t} className="lib-tag">
-              {t}
+              #{t}
             </span>
           ))}
         </div>
       )}
+
       <div className="lib-actions">
         <button
           className="lib-btn"
           onClick={() => onTogglePin(item.id, item.pinned)}
           title={item.pinned ? "Unpin" : "Pin"}
         >
-          {item.pinned ? "Unpin" : "Pin"}
+          {item.pinned ? "📌 Unpin" : "📌 Pin"}
         </button>
         <button
           className="lib-btn"
-          onClick={() => navigator.clipboard.writeText(item.content)}
+          onClick={() => navigator.clipboard.writeText(cleanedContent)}
         >
-          Copy
+          📋 Copy
         </button>
         <a
           className="lib-btn"
-          download={`${(item.title || "content").replace(/[^\w\-]+/g, "_")}.txt`}
-          href={`data:text/plain;charset=utf-8,${encodeURIComponent(item.content)}`}
+          download={`${(cleanedTitle || "content").replace(/[^\w\-]+/g, "_")}.txt`}
+          href={`data:text/plain;charset=utf-8,${encodeURIComponent(cleanedContent)}`}
         >
-          Download
+          ⬇️ Download
         </a>
         <button className="lib-btn" onClick={() => onDuplicate(item.id)}>
-          Duplicate
+          🔄 Duplicate
         </button>
         <span className="spacer" />
         <button className="lib-btn danger" onClick={() => onDelete(item.id)}>
-          Delete
+          ❌ Delete
         </button>
       </div>
     </article>

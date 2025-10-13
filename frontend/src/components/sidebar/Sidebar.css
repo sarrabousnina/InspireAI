@@ -169,3 +169,28 @@ body.sb-collapsed .sb-link:hover::after {
   .sb-sidebar.sb-open { transform: translateX(0); }
   .sb-main { margin-left: 0 !important; }
 }
+
+/* Scrollbar */
+.sb-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  transition: color 0.2s;
+}
+
+.sb-logout-btn:hover {
+  color: #dc3545;
+}
+
+.sb-logout-btn .sb-link-icon {
+  width: 20px;
+  text-align: center;
+}

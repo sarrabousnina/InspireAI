@@ -223,12 +223,11 @@ def list_items(q: Optional[str] = None,
                tone: Optional[str] = None,
                page: int = 1,
                pageSize: int = 20,
-               user_id: Optional[str] = None):  # <-- add user_id param
+               user: dict = Depends(get_current_user)):  # ← Use JWT user instead
+    user_id = user["user_id"]  # ← Get user_id from JWT
     off = (page - 1) * pageSize
-    where, params = [], {}
-    if user_id:  # <-- add this filter
-        where.append("user_id = :user_id")
-        params["user_id"] = user_id
+    where, params = ["user_id = :user_id"], {"user_id": user_id}  # ← Always filter by user!
+    
     if q:
         where.append("(title ILIKE :q OR content ILIKE :q)")
         params["q"] = f"%{q}%"
@@ -238,6 +237,7 @@ def list_items(q: Optional[str] = None,
     if tone and tone != "all":
         where.append("tone = :tone")
         params["tone"] = tone
+    
     sql = """
       SELECT id::text AS id, title, content, platform, tone, mode, words, model, tags, pinned, user_id, created_at
       FROM items
@@ -245,10 +245,10 @@ def list_items(q: Optional[str] = None,
     if where:
         sql += " WHERE " + " AND ".join(where)
     sql += " ORDER BY created_at DESC LIMIT :lim OFFSET :off"
+    
     with ENGINE.begin() as c:
         rows = c.execute(text(sql), {**params, "lim": pageSize, "off": off}).mappings().all()
     return {"items": rows}
-
 @app.post("/api/items", response_model=Item)
 @app.post("/api/items/", response_model=Item)
 def create_item(body: ItemIn, user: dict = Depends(get_current_user)):

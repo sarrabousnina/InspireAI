@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, type NavLinkRenderProps } from "react-router-dom";
+import { NavLink, type NavLinkRenderProps, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
 
 function cx(base: string, extra?: string) {
@@ -9,6 +9,7 @@ function cx(base: string, extra?: string) {
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   // restore persisted collapsed state
   useEffect(() => {
@@ -25,6 +26,12 @@ export default function Sidebar() {
     cx("sb-link", isActive ? "sb-active" : "");
 
   const closeMobile = () => setOpen(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
 
   return (
     <>
@@ -79,12 +86,20 @@ export default function Sidebar() {
           </NavLink>
         </nav>
 
+        {/* Logout button at the bottom */}
         <div className="sb-footer">
+          <button
+            className="sb-logout-btn"
+            onClick={handleLogout}
+            data-tip="Logout"
+          >
+            <span className="sb-link-icon">🚪</span>
+            <span className="sb-link-label">Logout</span>
+          </button>
           <span className="sb-version">v1.0.0</span>
         </div>
       </aside>
       
-
       {open && <div className="sb-backdrop" onClick={closeMobile} />}
     </>
   );
