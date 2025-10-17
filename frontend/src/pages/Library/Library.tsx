@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getItems, deleteItem, duplicateItem, updateItem } from "../../lib/api";
 import "./Library.css";
 
+// Add image type to Item interface
 type Item = {
   id: string;
   title: string;
@@ -14,7 +15,11 @@ type Item = {
   tags: string[];
   pinned: boolean;
   created_at: string; // ISO
-  images?: string[];
+  // Add image fields from the backend
+  image_caption?: string;
+  image_tags?: string[];
+  image_model?: string;
+  image_url?: string; // Added for actual image display
 };
 
 function fmtDate(iso: string) {
@@ -182,6 +187,9 @@ function Card({
   const cleanedTitle = cleanMarkdown(item.title || "(Untitled)");
   const cleanedContent = cleanMarkdown(item.content);
 
+  // Extract image info if available
+  const hasImage = item.image_caption || item.image_tags?.length;
+
   return (
     <article className="lib-card">
       <div className="lib-meta">
@@ -195,29 +203,33 @@ function Card({
       <h3 className="lib-title">{cleanedTitle}</h3>
 
       <div className="lib-content">
-        {/* For blog posts, you might want to render as HTML later */}
         <p>{cleanedContent}</p>
       </div>
 
-      {(item.images?.length ?? 0) > 0 && (
-        <div className="lib-media">
-          {item.images!.slice(0, 3).map((src, idx) => {
-            const remaining = item.images!.length - 3;
-            const showMore = idx === 2 && remaining > 0;
-            return (
-              <a
-                key={src + idx}
-                className="lib-thumb"
-                href={src}
-                target="_blank"
-                rel="noreferrer"
-                title="Open image"
-              >
-                <img src={src} alt={`image ${idx + 1}`} loading="lazy" />
-                {showMore && <span className="lib-more-badge">+{remaining}</span>}
-              </a>
-            );
-          })}
+      {/* Show actual image if available */}
+      {hasImage && item.image_url && (
+        <div className="lib-image-container">
+          <img 
+            src={`/uploads/${item.image_url}`} 
+            alt="Uploaded image" 
+            className="lib-uploaded-image"
+          />
+        </div>
+      )}
+
+      {/* Show image analysis if available */}
+      {(item.image_caption || item.image_tags?.length) && (
+        <div className="lib-image-analysis">
+          {item.image_caption && (
+            <div className="lib-image-caption">
+              <strong>Image:</strong> {item.image_caption}
+            </div>
+          )}
+          {item.image_tags && item.image_tags.length > 0 && (
+            <div className="lib-image-tags">
+              <strong>Tags:</strong> {item.image_tags.map(tag => `#${tag}`).join(', ')}
+            </div>
+          )}
         </div>
       )}
 

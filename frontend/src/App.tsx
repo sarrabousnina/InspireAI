@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { generateContent, createItem, addImageForItem } from "./lib/api";
+import { generateContent, createItem, addImageForItem, analyzeImage } from "./lib/api"; // Added analyzeImage import
 import ImageUploader from "./components/ImageUploader/ImageUploader";
 import "./app.css";
 
@@ -23,67 +23,102 @@ export default function App() {
     return t.length > 70 ? t.slice(0, 67) + "..." : t || "Untitled";
   }
 
-async function go() {
-  if (!prompt.trim()) return;
-  setLoading(true);
-  setOut("");
-
-  try {
-    // 1) Generate copy (uses image_captions / image_tags for better context)
-    const result = await generateContent({
-      prompt,
-      platform,
-      tone,
-      audience,
-      word_count: wordCount,
-      mode,
-      temperature: mode === "social" ? 0.7 : 0.6,
-      image_captions: imageCaptions.length ? imageCaptions : undefined,
-      image_tags: imageTags.length ? imageTags : undefined,
-    });
-    setOut(result);
-
-    // 2) Save the post itself
-    const saved = await createItem({
-      title: makeTitle(result, prompt),
-      content: result,
-      platform,
-      tone,
-      mode,
-      words: wordCount,
-      model: mode === "social" ? "llama-3.1-8b" : "llama-3.1-70b",
-      tags: [platform, tone],
-      pinned: false,
-    });
-
-    // 3) Attach each analyzed image to the saved post (if any)
-    if (imageCaptions.length) {
-      const tasks = imageCaptions.map((cap, i) =>
-        addImageForItem(saved.id, {
-          caption: cap,
-          tags: imageTags[i] || [],
-          // url: add later when you persist actual files
-        })
-      );
-      try {
-        await Promise.all(tasks);
-      } catch (err) {
-        // Don’t fail the whole flow if image attach has a hiccup
-        console.warn("Failed to attach one or more images:", err);
-      }
+  // In your component where you handle image upload:
+  const handleImageUpload = async (file: File) => {
+    try {
+      // Analyze the image
+      const analysis = await analyzeImage(file);
+      
+      // Save the file path (you'll need to get this from the backend)
+      // For now, let's assume you can get the file path from the response
+      // But since your backend doesn't return it, we need to update the backend first
+      
+      // Create a post
+      const newPost = await createItem({
+        title: "Post with image",
+        content: "Generated content",
+        platform: "linkedin",
+        tone: "professional",
+        mode: "social",
+        words: 120,
+        model: "llama-3.1-8b-instant",
+        tags: [],
+        pinned: false
+      });
+      
+      // Attach the image analysis to the post
+      await addImageForItem(newPost.id, {
+        caption: analysis.caption,
+        tags: analysis.tags,
+        model: analysis.model,
+        url: "" // ← This is the problem - you don't have the file path here
+      });
+    } catch (error) {
+      console.error("Error uploading image:", error);
     }
+  };
 
-    // 4) (Optional) reset image context for next run
-    // setImageCaptions([]);
-    // setImageTags([]);
-    // imgCounter.current = 0;
+  async function go() {
+    if (!prompt.trim()) return;
+    setLoading(true);
+    setOut("");
 
-  } catch (e: any) {
-    setOut(e.message || "Error");
-  } finally {
-    setLoading(false);
+    try {
+      // 1) Generate copy (uses image_captions / image_tags for better context)
+      const result = await generateContent({
+        prompt,
+        platform,
+        tone,
+        audience,
+        word_count: wordCount,
+        mode,
+        temperature: mode === "social" ? 0.7 : 0.6,
+        image_captions: imageCaptions.length ? imageCaptions : undefined,
+        image_tags: imageTags.length ? imageTags : undefined,
+      });
+      setOut(result);
+
+      // 2) Save the post itself
+      const saved = await createItem({
+        title: makeTitle(result, prompt),
+        content: result,
+        platform,
+        tone,
+        mode,
+        words: wordCount,
+        model: mode === "social" ? "llama-3.1-8b" : "llama-3.1-70b",
+        tags: [platform, tone],
+        pinned: false,
+      });
+
+      // 3) Attach each analyzed image to the saved post (if any)
+      if (imageCaptions.length) {
+        const tasks = imageCaptions.map((cap, i) =>
+          addImageForItem(saved.id, {
+            caption: cap,
+            tags: imageTags[i] || [],
+            // url: add later when you persist actual files
+          })
+        );
+        try {
+          await Promise.all(tasks);
+        } catch (err) {
+          // Don’t fail the whole flow if image attach has a hiccup
+          console.warn("Failed to attach one or more images:", err);
+        }
+      }
+
+      // 4) (Optional) reset image context for next run
+      // setImageCaptions([]);
+      // setImageTags([]);
+      // imgCounter.current = 0;
+
+    } catch (e: any) {
+      setOut(e.message || "Error");
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
 
   const wordPresets = mode === "blog" ? [400, 600, 900] : [80, 120, 180];

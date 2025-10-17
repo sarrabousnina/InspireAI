@@ -12,6 +12,7 @@ from jose import jwt, JWTError
 from passlib.context import CryptContext
 from . import images
 import json
+from fastapi.staticfiles import StaticFiles
 
 # --- DB helpers ---
 from .db import ENGINE, SessionLocal, init_db
@@ -28,6 +29,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = FastAPI(title="InspireAI API", version="1.0.0")
 
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # --- CORS ---
 app.add_middleware(
     CORSMiddleware,
@@ -223,32 +225,84 @@ def list_items(q: Optional[str] = None,
                tone: Optional[str] = None,
                page: int = 1,
                pageSize: int = 20,
-               user: dict = Depends(get_current_user)):  # ← Use JWT user instead
-    user_id = user["user_id"]  # ← Get user_id from JWT
+               user: dict = Depends(get_current_user)):
+    user_id = user["user_id"]
     off = (page - 1) * pageSize
-    where, params = ["user_id = :user_id"], {"user_id": user_id}  # ← Always filter by user!
+    where, params = ["i.user_id = :user_id"], {"user_id": user_id}
     
     if q:
-        where.append("(title ILIKE :q OR content ILIKE :q)")
+        where.append("(i.title ILIKE :q OR i.content ILIKE :q)")
         params["q"] = f"%{q}%"
     if platform and platform != "all":
-        where.append("platform = :platform")
+        where.append("i.platform = :platform")
         params["platform"] = platform
     if tone and tone != "all":
-        where.append("tone = :tone")
+        where.append("i.tone = :tone")
         params["tone"] = tone
     
     sql = """
-      SELECT id::text AS id, title, content, platform, tone, mode, words, model, tags, pinned, user_id, created_at
-      FROM items
+      SELECT 
+        i.id::text AS id, 
+        i.title, 
+        i.content, 
+        i.platform, 
+        i.tone, 
+        i.mode, 
+        i.words, 
+        i.model, 
+        i.tags, 
+        i.pinned, 
+        i.user_id, 
+        i.created_at,
+        img.caption AS image_caption,
+        img.tags AS image_tags,
+        img.url AS image_url,
+        img.created_at AS image_created_at  -- ← Add this line
+      FROM items i
+      LEFT JOIN images img ON i.id = img.item_id
     """
     if where:
         sql += " WHERE " + " AND ".join(where)
-    sql += " ORDER BY created_at DESC LIMIT :lim OFFSET :off"
+    sql += " ORDER BY i.created_at DESC LIMIT :lim OFFSET :off"
     
-    with ENGINE.begin() as c:
-        rows = c.execute(text(sql), {**params, "lim": pageSize, "off": off}).mappings().all()
-    return {"items": rows}
+    try:
+        with ENGINE.begin() as c:
+            rows = c.execute(text(sql), {**params, "lim": pageSize, "off": off}).mappings().all()
+        
+        # Group images by item_id to handle multiple images per item
+        items_dict = {}
+        for row in rows:
+            item_id = row['id']
+            if item_id not in items_dict:
+                # Convert row to dict and handle arrays
+                item_data = dict(row)
+                # Clean up None values for image fields
+                if item_data.get('image_tags') is None:
+                    item_data['image_tags'] = []
+                # Convert created_at to string
+                item_data['created_at'] = item_data['created_at'].isoformat() if item_data['created_at'] else ""
+                if item_data.get('image_created_at'):
+                    item_data['image_created_at'] = item_data['image_created_at'].isoformat()
+                items_dict[item_id] = item_data
+            else:
+                # If this is another image for the same item, you could handle multiple images here
+                # For now, we'll just keep the first image data
+                existing = items_dict[item_id]
+                if existing.get('image_caption') is None and row.get('image_caption'):
+                    existing['image_caption'] = row['image_caption']
+                    existing['image_tags'] = row.get('image_tags') or []
+                    existing['image_url'] = row.get('image_url')
+                    existing['image_created_at'] = row.get('image_created_at').isoformat() if row.get('image_created_at') else ""
+        
+        return {"items": list(items_dict.values())}
+    
+    except Exception as e:
+        print(f"Error in list_items: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to load items")
+
+
+
+
 @app.post("/api/items", response_model=Item)
 @app.post("/api/items/", response_model=Item)
 def create_item(body: ItemIn, user: dict = Depends(get_current_user)):

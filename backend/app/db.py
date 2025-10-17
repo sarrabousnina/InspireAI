@@ -44,8 +44,22 @@ def init_db() -> None:
             model TEXT,
             tags TEXT[] NOT NULL DEFAULT '{}',
             pinned BOOLEAN NOT NULL DEFAULT FALSE,
-            user_id UUID NOT NULL,  -- ← This was missing!
+            user_id UUID NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        """))
+        
+        # Images table for vision analysis attached to posts
+        c.execute(text("""
+        CREATE TABLE IF NOT EXISTS images (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            item_id UUID NOT NULL,
+            url TEXT,
+            caption TEXT NOT NULL,
+            tags TEXT[] NOT NULL DEFAULT '{}',
+            model TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
         );
         """))

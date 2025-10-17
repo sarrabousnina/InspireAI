@@ -22,7 +22,10 @@ export type GenPayload = {
 export async function generateContent(body: any) {
   const res = await fetch("/api/generate", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      ...getAuthHeader() // ← Add auth header here
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await res.text());
@@ -36,13 +39,12 @@ export async function getItems(params: { q?: string; platform?: string; tone?: s
   );
   
   const res: Response = await fetch(`/api/items?${qs.toString()}`, {
-    headers: getAuthHeader()  // ← Add this line!
+    headers: getAuthHeader()
   });
   
   if (!res.ok) throw new Error("Failed to load items");
   return res.json();
 }
-
 
 export async function deleteItem(id: string) {
   const res: Response = await fetch(`/api/items/${id}`, {
@@ -70,9 +72,6 @@ export async function updateItem(id: string, body: any) {
   if (!res.ok) throw new Error("Update failed");
   return res.json();
 }
-
-// src/lib/api.ts
-
 
 export async function createItem(body: {
   title?: string;
@@ -105,12 +104,12 @@ export async function analyzeImage(file: File) {
     const text = await res.text();
     throw new Error(text || "Image analysis failed");
   }
-  return (await res.json()) as { caption: string; tags: string[]; model: string };
+  return (await res.json()) as { caption: string; tags: string[]; model: string; url: string };
 }
 
 export async function addImageForItem(
   itemId: string,
-  data: { url?: string; caption: string; tags: string[] }
+  data: { url?: string; caption: string; tags: string[]; model?: string }  // ← Add model field
 ) {
   const res = await fetch(`/api/images/attach/${itemId}`, {
     method: "POST",

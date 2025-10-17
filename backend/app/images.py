@@ -9,7 +9,7 @@ Env required:
   OPENROUTER_API_KEY=or-xxxxxxxx
 Optional:
   OPENROUTER_VISION_MODEL=qwen/qwen2.5-vl-72b-instruct:free
-  OPENROUTER_REFERER=https://inspire-ai.local
+  OPENROUTER_REFERER=https://inspire-ai.local    
   OPENROUTER_APP_TITLE=Inspire AI
 """
 
@@ -29,16 +29,20 @@ import requests
 
 router = APIRouter(prefix="/api/images", tags=["images"])
 
+# Create uploads directory if it doesn't exist
+os.makedirs("uploads", exist_ok=True)
+
 # ---------- Models ----------
 
 class AnalysisResp(BaseModel):
     caption: str = Field("", description="Short human caption (<= 20 words)")
     tags: List[str] = Field(default_factory=list, description="3–8 lowercase tags without #")
     model: str = Field(..., description="Vision model used")
+    url: str = Field("", description="File path of saved image")  # ← Add this line
 
 # DB payloads
 class ImageIn(BaseModel):
-    url: Optional[str] = None     # for later if you store actual files
+    url: Optional[str] = None     # This will be the saved file path
     caption: str
     tags: List[str] = []
 
@@ -87,7 +91,7 @@ def _call_openrouter_vision(data_url: str) -> dict:
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": referer,  # helps with routing/quotas
+        "HTTP-Referer": referer,
         "X-Title": app_title,
     }
     body = {
@@ -163,7 +167,7 @@ def _call_openrouter_vision(data_url: str) -> dict:
 async def analyze_image(file: UploadFile = File(...)):
     """
     Upload one image (form-data 'file') and get a caption + tags from a Vision model.
-    Returns: { caption, tags[], model }
+    Returns: { caption, tags[], model, url }
     """
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Only image files are allowed.")
@@ -176,15 +180,24 @@ async def analyze_image(file: UploadFile = File(...)):
     data_url = _to_data_url(raw, file.filename)
     vision_result = _call_openrouter_vision(data_url)
 
+    # Save the actual file
+    ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    filename = f"{os.urandom(8).hex()}.{ext}"
+    filepath = os.path.join("uploads", filename)
+    
+    with open(filepath, "wb") as f:
+        f.write(raw)
+
+    # Return analysis + file path
     return AnalysisResp(
         caption=vision_result["caption"],
         tags=vision_result["tags"],
         model=vision_result["model"],
+        url=filename  # ← Add this line!
     )
 
 
 # ---------- Routes: DB (attach/list) ----------
-# backend/app/routes/images.py
 import json
 import logging
 
@@ -212,8 +225,11 @@ def attach_image_to_item(item_id: str, body: ImageIn):
     if not isinstance(tags_val, (list, tuple)):
         tags_val = [str(tags_val)]
 
-    # convert tags to JSON string for safe insertion via raw SQL text
-    tags_json = json.dumps(tags_val)
+    # Convert tags to PostgreSQL array format for TEXT[] column
+    if tags_val:
+        tags_array = "{" + ",".join([f'"{tag}"' for tag in tags_val]) + "}"
+    else:
+        tags_array = "{}"  # Empty array
 
     with ENGINE.begin() as c:
         exists = c.execute(text("SELECT 1 FROM items WHERE id = :id"), {"id": item_id}).first()
@@ -229,8 +245,7 @@ def attach_image_to_item(item_id: str, body: ImageIn):
                 "item_id": item_id,
                 "url": payload.get("url"),
                 "caption": payload.get("caption"),
-                # store JSON string; later we parse to list for the response
-                "tags": tags_json
+                "tags": tags_array  # Use PostgreSQL array format
             }).mappings().first()
         except Exception as e:
             logger.exception("Failed to insert image for item %s", item_id)
@@ -239,16 +254,27 @@ def attach_image_to_item(item_id: str, body: ImageIn):
     if not row:
         raise HTTPException(status_code=500, detail="Insert failed")
 
-    # normalize returned tags: could be JSON string (text column) or already list (jsonb)
+    # Normalize returned tags: could be PostgreSQL array string or JSON string
     returned_tags = row.get("tags")
     if isinstance(returned_tags, str):
-        try:
-            returned_tags = json.loads(returned_tags)
-        except Exception:
-            # fallback: single string value -> wrap
-            returned_tags = [returned_tags] if returned_tags else []
+        # Convert PostgreSQL array string to Python list
+        if returned_tags.startswith('{') and returned_tags.endswith('}'):
+            content = returned_tags[1:-1]
+            if content:
+                returned_tags = [tag.strip('" ') for tag in content.split(',')]
+            else:
+                returned_tags = []
+        else:
+            # Fallback: try JSON
+            try:
+                returned_tags = json.loads(returned_tags)
+            except Exception:
+                returned_tags = [returned_tags] if returned_tags else []
     elif returned_tags is None:
         returned_tags = []
+
+    # Convert created_at to string (ISO format)
+    created_at_str = row.get("created_at").isoformat() if row.get("created_at") else ""
 
     # Build a mapping that matches ImageOut model
     result = {
@@ -257,7 +283,7 @@ def attach_image_to_item(item_id: str, body: ImageIn):
         "url": row.get("url"),
         "caption": row.get("caption") or "",
         "tags": returned_tags,
-        "created_at": row.get("created_at"),
+        "created_at": created_at_str,  # ← Convert to string!
     }
     return result
 
@@ -279,18 +305,31 @@ def list_images_for_item(item_id: str):
     for r in rows:
         tags = r.get("tags")
         if isinstance(tags, str):
-            try:
-                tags = json.loads(tags)
-            except Exception:
-                tags = [tags] if tags else []
+            # Convert PostgreSQL array string to Python list
+            if tags.startswith('{') and tags.endswith('}'):
+                content = tags[1:-1]
+                if content:
+                    tags = [tag.strip('" ') for tag in content.split(',')]
+                else:
+                    tags = []
+            else:
+                # Fallback: try JSON
+                try:
+                    tags = json.loads(tags)
+                except Exception:
+                    tags = [tags] if tags else []
         elif tags is None:
             tags = []
+        
+        # Convert created_at to string
+        created_at_str = r.get("created_at").isoformat() if r.get("created_at") else ""
+        
         normalized.append({
             "id": r["id"],
             "item_id": r["item_id"],
             "url": r.get("url"),
             "caption": r.get("caption") or "",
             "tags": tags,
-            "created_at": r.get("created_at"),
+            "created_at": created_at_str,
         })
     return normalized
