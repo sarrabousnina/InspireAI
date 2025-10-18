@@ -84,6 +84,18 @@ export default function Sidebar() {
             <span className="sb-link-icon">📚</span>
             <span className="sb-link-label">Library</span>
           </NavLink>
+
+
+          
+          <NavLink
+            to="/agent"
+            className={navClass}
+            onClick={closeMobile}
+            data-tip="Agent"
+          >
+            <span className="sb-link-icon">🤖</span>
+            <span className="sb-link-label">Agent</span>
+          </NavLink>
         </nav>
 
         {/* Logout button at the bottom */}

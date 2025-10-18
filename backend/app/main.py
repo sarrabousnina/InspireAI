@@ -13,10 +13,10 @@ from passlib.context import CryptContext
 from . import images
 import json
 from fastapi.staticfiles import StaticFiles
+from .agent import router as agent_router
 
-# --- DB helpers ---
-from .db import ENGINE, SessionLocal, init_db
 
+from .db import ENGINE, SessionLocal, init_db, get_db
 # --- Groq LLM client ---
 from groq import Groq
 
@@ -50,12 +50,6 @@ client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 def on_startup():
     init_db()
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 # --------- JWT User Dependency ---------
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
@@ -67,10 +61,10 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         user_id: str = payload.get("user_id")
         if user_id is None:
             raise credentials_exception
-        return {"user_id": user_id, "username": payload.get("sub")}
+        # ✅ Return token too!
+        return {"user_id": user_id, "token": token}
     except JWTError:
         raise credentials_exception
-
 # ------------------- Schemas -------------------
 class GenerateIn(BaseModel):
     prompt: str = Field(..., description="User idea or topic")
@@ -374,3 +368,7 @@ def duplicate_item(id: str):
     if not row:
         raise HTTPException(404, "Not found")
     return row
+
+
+
+app.include_router(agent_router, prefix="/api/agent", tags=["agent"])

@@ -3,7 +3,8 @@ import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
-
+from sqlalchemy.orm import sessionmaker, declarative_base  # ✅ Add declarative_base
+Base = declarative_base()  # ✅ Define Base here
 # Load .env from backend/app/.env
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
@@ -63,3 +64,11 @@ def init_db() -> None:
             FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
         );
         """))
+
+# ✅ get_db() is at the TOP LEVEL (no extra indentation!)
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
