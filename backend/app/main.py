@@ -29,6 +29,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = FastAPI(title="InspireAI API", version="1.0.0")
 
+app.include_router(agent_router, prefix="/api")
+
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # --- CORS ---
 app.add_middleware(
@@ -295,7 +297,14 @@ def list_items(q: Optional[str] = None,
         raise HTTPException(status_code=500, detail="Failed to load items")
 
 
-
+@app.get("/api/agent/debug")
+def agent_debug():
+    from .agent import client, GROQ_API_KEY
+    return {
+        "GROQ_API_KEY_present": GROQ_API_KEY is not None,
+        "GROQ_API_KEY_prefix": GROQ_API_KEY[:6] + "..." if GROQ_API_KEY else None,
+        "client_initialized": client is not None
+    }
 
 @app.post("/api/items", response_model=Item)
 @app.post("/api/items/", response_model=Item)
@@ -371,4 +380,3 @@ def duplicate_item(id: str):
 
 
 
-app.include_router(agent_router, prefix="/api/agent", tags=["agent"])

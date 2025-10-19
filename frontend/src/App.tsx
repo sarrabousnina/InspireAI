@@ -1,60 +1,60 @@
-import { useState, useRef } from "react";
-import { generateContent, createItem, addImageForItem, analyzeImage } from "./lib/api"; // Added analyzeImage import
+// src/App.tsx
+import { useState, useRef, useEffect } from "react";
+import { generateContent, createItem, addImageForItem, analyzeImage } from "./lib/api";
 import ImageUploader from "./components/ImageUploader/ImageUploader";
 import "./app.css";
 
 export default function App() {
   const [prompt, setPrompt] = useState("");
-  const [platform, setPlatform] = useState<"linkedin"|"instagram"|"facebook"|"blog">("linkedin");
-  const [tone, setTone] = useState<"professional"|"friendly"|"witty"|"persuasive">("professional");
+  const [platform, setPlatform] = useState<"linkedin" | "instagram" | "facebook" | "blog">("linkedin");
+  const [tone, setTone] = useState<"professional" | "friendly" | "witty" | "persuasive">("professional");
   const [audience, setAudience] = useState("SMBs / startups");
   const [wordCount, setWordCount] = useState(120);
-  const [mode, setMode] = useState<"social"|"blog">("social");
+  const [mode, setMode] = useState<"social" | "blog">("social");
   const [out, setOut] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // NEW: collect image analysis
+  // Image state
   const [imageCaptions, setImageCaptions] = useState<string[]>([]);
   const [imageTags, setImageTags] = useState<string[][]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const imgCounter = useRef(0);
+
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [imagePreviews]);
 
   function makeTitle(text: string, fallback: string) {
     const t = text.split(/\n|\. |\?/)[0]?.trim() || fallback.trim();
     return t.length > 70 ? t.slice(0, 67) + "..." : t || "Untitled";
   }
 
-  // In your component where you handle image upload:
-  const handleImageUpload = async (file: File) => {
+  // ✅ This matches ImageUploader's expected type
+  const handleImageAnalysisResult = async (analysis: { caption: string; tags: string[]; model: string }) => {
     try {
-      // Analyze the image
-      const analysis = await analyzeImage(file);
-      
-      // Save the file path (you'll need to get this from the backend)
-      // For now, let's assume you can get the file path from the response
-      // But since your backend doesn't return it, we need to update the backend first
-      
-      // Create a post
-      const newPost = await createItem({
-        title: "Post with image",
-        content: "Generated content",
-        platform: "linkedin",
-        tone: "professional",
-        mode: "social",
-        words: 120,
-        model: "llama-3.1-8b-instant",
-        tags: [],
-        pinned: false
-      });
-      
-      // Attach the image analysis to the post
-      await addImageForItem(newPost.id, {
-        caption: analysis.caption,
-        tags: analysis.tags,
-        model: analysis.model,
-        url: "" // ← This is the problem - you don't have the file path here
-      });
-    } catch (error) {
-      console.error("Error uploading image:", error);
+      setImageCaptions(prev => [...prev, analysis.caption]);
+      setImageTags(prev => [...prev, analysis.tags]);
+
+      imgCounter.current += 1;
+      const n = imgCounter.current;
+      setPrompt(prev =>
+        [
+          prev.trim(),
+          `Image ${n}: ${analysis.caption}`,
+          analysis.tags?.length ? `Tags: ${analysis.tags.join(", ")}` : "",
+          "----",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      );
+    } catch (err) {
+      console.error("Error handling image result:", err);
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -64,7 +64,6 @@ export default function App() {
     setOut("");
 
     try {
-      // 1) Generate copy (uses image_captions / image_tags for better context)
       const result = await generateContent({
         prompt,
         platform,
@@ -78,7 +77,6 @@ export default function App() {
       });
       setOut(result);
 
-      // 2) Save the post itself
       const saved = await createItem({
         title: makeTitle(result, prompt),
         content: result,
@@ -91,28 +89,19 @@ export default function App() {
         pinned: false,
       });
 
-      // 3) Attach each analyzed image to the saved post (if any)
       if (imageCaptions.length) {
         const tasks = imageCaptions.map((cap, i) =>
           addImageForItem(saved.id, {
             caption: cap,
             tags: imageTags[i] || [],
-            // url: add later when you persist actual files
           })
         );
         try {
           await Promise.all(tasks);
         } catch (err) {
-          // Don’t fail the whole flow if image attach has a hiccup
           console.warn("Failed to attach one or more images:", err);
         }
       }
-
-      // 4) (Optional) reset image context for next run
-      // setImageCaptions([]);
-      // setImageTags([]);
-      // imgCounter.current = 0;
-
     } catch (e: any) {
       setOut(e.message || "Error");
     } finally {
@@ -120,13 +109,14 @@ export default function App() {
     }
   }
 
-
   const wordPresets = mode === "blog" ? [400, 600, 900] : [80, 120, 180];
 
   return (
     <div className="grid">
       <header className="header">
-        <h1 className="title">InspireAI <em>Content Studio</em></h1>
+        <h1 className="title">
+          InspireAI <em>Content Studio</em>
+        </h1>
         <p className="subtitle">Free • Fast • Groq-powered</p>
       </header>
 
@@ -219,30 +209,70 @@ export default function App() {
             onChange={(e) => setPrompt(e.target.value)}
           />
         </label>
+<div className="image-upload-minimal">
+  {isAnalyzing && <div className="analyzing">Thinking...</div>}
+<button
+  className="upload-image-btn"
+  onClick={() => document.getElementById("image-upload-input")?.click()}
+>
+  Upload images
+</button>
 
-        {/* Images */}
-        <ImageUploader
-          className="mt-3"
-          onResult={(r) => {
-            // collect arrays to send to backend
-            setImageCaptions((prev) => [...prev, r.caption]);
-            setImageTags((prev) => [...prev, r.tags]);
+  <input
+    id="image-upload-input"
+    type="file"
+    multiple
+    accept="image/*"
+    style={{ display: "none" }}
+    onChange={async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length === 0) return;
 
-            // optional: human-readable note in the textarea (no JSON)
-            imgCounter.current += 1;
-            const n = imgCounter.current;
-            setPrompt((prev) =>
-              [
-                prev.trim(),
-                `Image ${n} → ${r.caption}`,
-                r.tags?.length ? `Tags: ${r.tags.join(", ")}` : "",
-                "----",
-              ]
-                .filter(Boolean)
-                .join("\n")
-            );
-          }}
-        />
+      setIsAnalyzing(true);
+
+      // Process each file
+      for (const file of files) {
+        try {
+          const analysis = await analyzeImage(file);
+          setImageCaptions(prev => [...prev, analysis.caption]);
+          setImageTags(prev => [...prev, analysis.tags]);
+
+          // Create preview URL
+          const url = URL.createObjectURL(file);
+          setImagePreviews(prev => [...prev, url]);
+
+          imgCounter.current += 1;
+          const n = imgCounter.current;
+          setPrompt(prev =>
+            [
+              prev.trim(),
+              `Image ${n}: ${analysis.caption}`,
+              analysis.tags?.length ? `Tags: ${analysis.tags.join(", ")}` : "",
+              "----",
+            ]
+              .filter(Boolean)
+              .join("\n")
+          );
+        } catch (err) {
+          console.error("Error analyzing image:", err);
+        }
+      }
+
+      setIsAnalyzing(false);
+      e.target.value = ""; // Allow re-selecting same file
+    }}
+  />
+
+  {imagePreviews.length > 0 && (
+    <div className="image-thumbnails">
+      {imagePreviews.map((url, i) => (
+        <div key={i} className="thumbnail">
+          <img src={url} alt={`Preview ${i + 1}`} />
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
         <div className="actions">
           <button
