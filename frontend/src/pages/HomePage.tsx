@@ -1,5 +1,6 @@
 // src/pages/HomePage.tsx
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Sparkles,
   Linkedin,
@@ -35,6 +36,8 @@ type Feature = {
 };
 
 const HomePage: React.FC = () => {
+  const navigate = useNavigate(); // ✅ THIS WAS MISSING!
+
   // Platform cards
   const platforms: Platform[] = [
     { 
@@ -114,8 +117,18 @@ const HomePage: React.FC = () => {
         </nav>
 
         <div className="header-actions">
-          <button className="sign-in">Sign In</button>
-          <button className="get-started">Get Started</button>
+          <button 
+            className="sign-in"
+            onClick={() => navigate('/login')}
+          >
+            Sign In
+          </button>
+          <button 
+            className="get-started"
+            onClick={() => navigate('/studio')}
+          >
+            Get Started
+          </button>
         </div>
       </header>
 
@@ -124,7 +137,12 @@ const HomePage: React.FC = () => {
         <h1>Generate <span>Amazing Content</span> Across All Platforms</h1>
         <p>Create engaging posts for LinkedIn, Facebook, Instagram, Twitter, and blogs in seconds. Powered by AI with intelligent insights from our ReAct agent.</p>
         <div className="hero-buttons">
-          <button className="start">Start Creating Free <ArrowRight className="inline" /></button>
+          <button 
+            className="start"
+            onClick={() => navigate('/studio')}
+          >
+            Start Creating Free <ArrowRight className="inline" />
+          </button>
           <button className="watch">Watch Demo</button>
         </div>
       </section>
@@ -168,7 +186,12 @@ const HomePage: React.FC = () => {
               ))}
             </div>
 
-            <button className="view-history">View Your History <History className="inline" /></button>
+            <button 
+              className="view-history"
+              onClick={() => navigate('/studio/history')}
+            >
+              View Your History <History className="inline" />
+            </button>
           </div>
 
           <div className="right">
@@ -204,7 +227,12 @@ const HomePage: React.FC = () => {
       <section className="final-cta">
         <h2>Ready to Create Better Content?</h2>
         <p>Join creators and marketers using inspireAI to generate amazing content across all platforms in seconds</p>
-        <button className="start-trial">Start Free Trial <ArrowRight className="inline" /></button>
+        <button 
+          className="start-trial"
+          onClick={() => navigate('/signup')}
+        >
+          Start Free Trial <ArrowRight className="inline" />
+        </button>
       </section>
 
       {/* Footer */}
