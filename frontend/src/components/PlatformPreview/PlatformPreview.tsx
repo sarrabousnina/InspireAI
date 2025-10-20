@@ -1,28 +1,66 @@
 // src/components/PlatformPreview.tsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
-import pdp from "/pdp.png"; // ✅ Correct import
-import "./PlatformPreview.css"; // Assuming you have some CSS for styling
+import pdp from "/pdp.png";
+import "./PlatformPreview.css";
 
 interface PlatformPreviewProps {
   content: string;
   platform: "linkedin" | "instagram" | "facebook" | "blog";
 }
 
+interface User {
+  name: string;
+  title: string;
+  avatarUrl?: string;
+}
+
 const PlatformPreview: React.FC<PlatformPreviewProps> = ({ content, platform }) => {
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    // Load user from localStorage
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        setUser({
+          name: parsed.name || "Your Name",
+          title: parsed.title || "Your Title",
+          avatarUrl: parsed.avatarUrl || pdp,
+        });
+      } catch (e) {
+        console.error("Failed to parse user from localStorage", e);
+        // Fallback
+        setUser({
+          name: "Your Name",
+          title: "Your Title",
+          avatarUrl: pdp,
+        });
+      }
+    } else {
+      // Fallback if no user
+      setUser({
+        name: "Your Name",
+        title: "Your Title",
+        avatarUrl: pdp,
+      });
+    }
+  }, []);
+
   if (platform === "linkedin") {
     return (
       <div className="linkedin-post-card">
         {/* Post Header */}
-        <div className="post-header ">
+        <div className="post-header">
           <img
-            src={pdp}
-            alt="Sarah Bousnina"
+            src={user?.avatarUrl || pdp}
+            alt={user?.name || "User"}
             className="author-avatar"
           />
           <div className="author-info">
-            <strong>Sarah Bousnina</strong>
-            <span className="author-title">IT Engineering Student at ESPRIT</span>
+            <strong>{user?.name || "Your Name"}</strong>
+            <span className="author-title">{user?.title || "Your Title"}</span>
             <span className="post-time">• Posted now</span>
           </div>
         </div>

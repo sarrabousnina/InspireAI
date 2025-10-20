@@ -118,7 +118,7 @@ export default function App() {
         <h1 className="title">
           InspireAI <em>Content Studio</em>
         </h1>
-        <p className="subtitle">Free • Fast • Groq-powered</p>
+        <p className="subtitle">Free • Fast • Powerful</p>
       </header>
 
       <section className="card controls">
