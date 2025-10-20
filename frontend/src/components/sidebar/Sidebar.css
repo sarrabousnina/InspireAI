@@ -158,8 +158,19 @@ body.sb-collapsed .sb-link:hover::after {
 
 /* Content offset (desktop) */
 @media (min-width: 769px) {
-  .sb-main { margin-left: var(--sb-w); transition: margin-left var(--fast) ease; }
-  body.sb-collapsed .sb-main { margin-left: var(--sb-w-collapsed); }
+  .sb-main { 
+    margin-left: var(--sb-w); 
+    transition: margin-left var(--fast) ease; 
+  }
+
+  /* ✅ THIS IS THE ONLY ADDITION YOU NEED */
+  .sb-main.full-width {
+    margin-left: 0 !important;
+  }
+
+  body.sb-collapsed .sb-main { 
+    margin-left: var(--sb-w-collapsed); 
+  }
 }
 
 /* Mobile behaviour */
