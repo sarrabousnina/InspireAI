@@ -22,33 +22,48 @@ const ChatWindow: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    const trimmedInput = input.trim();
+    if (!trimmedInput) return;
 
-    // Add user message with correct literal type
-    setMessages((prev) => [...prev, { role: 'user' as const, content: input }]);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: 'You must be logged in to chat with the agent.' },
+      ]);
+      return;
+    }
+
+    // Add user message immediately
+    setMessages((prev) => [...prev, { role: 'user', content: trimmedInput }]);
     setInput('');
     setIsLoading(true);
 
     try {
       const response = await fetch('http://localhost:8000/api/agent/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`, // ✅ Now authenticated!
+        },
+        body: JSON.stringify({ message: trimmedInput }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Add assistant message with correct literal type
-        setMessages((prev) => [...prev, { role: 'assistant' as const, content: data.response }]);
+        setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
       } else {
-        throw new Error(data.error || 'Something went wrong');
+        throw new Error(data.detail || 'Failed to get response from agent');
       }
     } catch (err) {
-      console.error(err);
+      console.error('Agent chat error:', err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant' as const, content: 'Sorry, I had trouble responding. Try again?' },
+        {
+          role: 'assistant',
+          content: 'Sorry, I had trouble responding. Please try again or check your connection.',
+        },
       ]);
     } finally {
       setIsLoading(false);
@@ -82,14 +97,15 @@ const ChatWindow: React.FC = () => {
               borderRadius: '8px',
               backgroundColor: msg.role === 'user' ? '#e3f2fd' : '#f5f5f5',
               maxWidth: '80%',
+              wordBreak: 'break-word',
             }}
           >
             {msg.content}
           </div>
         ))}
         {isLoading && (
-          <div style={{ textAlign: 'left', padding: '0.75rem', fontStyle: 'italic' }}>
-            Typing...
+          <div style={{ textAlign: 'left', padding: '0.75rem', fontStyle: 'italic', color: '#666' }}>
+            Thinking...
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -107,18 +123,26 @@ const ChatWindow: React.FC = () => {
             padding: '0.5rem',
             borderRadius: '4px',
             border: '1px solid #ccc',
+            fontSize: '1rem',
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit(e as any);
+            }
           }}
         />
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !input.trim()}
           style={{
             padding: '0.5rem 1rem',
-            backgroundColor: '#1976d2',
+            backgroundColor: isLoading || !input.trim() ? '#ccc' : '#1976d2',
             color: 'white',
             border: 'none',
             borderRadius: '4px',
-            cursor: isLoading ? 'not-allowed' : 'pointer',
+            cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer',
+            fontWeight: 'bold',
           }}
         >
           Send

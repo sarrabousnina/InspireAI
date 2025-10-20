@@ -38,7 +38,8 @@ app.add_middleware(
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"],  # Still fine, but let's also add...
+    expose_headers=["*"],  # Optional: exposes all headers to frontend
 )
 
 # --- Groq config ---
@@ -55,18 +56,7 @@ def on_startup():
 
 # --------- JWT User Dependency ---------
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
-
-def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
-    credentials_exception = HTTPException(status_code=401, detail="Could not validate credentials")
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("user_id")
-        if user_id is None:
-            raise credentials_exception
-        # ✅ Return token too!
-        return {"user_id": user_id, "token": token}
-    except JWTError:
-        raise credentials_exception
+from .auth import get_current_user
 # ------------------- Schemas -------------------
 class GenerateIn(BaseModel):
     prompt: str = Field(..., description="User idea or topic")
