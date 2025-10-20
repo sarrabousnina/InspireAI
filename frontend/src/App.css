@@ -329,3 +329,7 @@ body{
   object-fit: cover;
   background: #eee;
 }
+.placeholder-text {
+  color: #999;
+  font-style: italic;
+}

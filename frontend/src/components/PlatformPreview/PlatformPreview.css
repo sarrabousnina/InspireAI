@@ -1,0 +1,153 @@
+/* === Realistic LinkedIn Post Preview === */
+
+.linkedin-post-card {
+  background: white;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  max-width: 600px;
+  margin: 0 auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  line-height: 1.5;
+}
+
+/* --- Header: Avatar + Name + Title + Time --- */
+.post-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.author-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #ddd;
+  border: 1px solid #e6e6e6;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.author-info {
+  flex: 1;
+}
+
+.author-info strong {
+  font-size: 14px;
+  color: #000;
+  display: block;
+  font-weight: 600;
+}
+
+.author-title {
+  font-size: 12px;
+  color: #666;
+  display: block;
+  margin-top: 2px;
+}
+
+.post-time {
+  font-size: 12px;
+  color: #999;
+  margin-left: 4px;
+}
+
+/* --- Post Content (Markdown Rendered) --- */
+.post-content {
+  line-height: 1.6;
+  color: #333;
+  font-size: 15px;
+  margin: 12px 0;
+}
+
+.post-content p {
+  margin: 12px 0;
+}
+
+.post-content h1,
+.post-content h2,
+.post-content h3 {
+  margin: 16px 0 8px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.post-content ul,
+.post-content ol {
+  padding-left: 20px;
+  margin: 12px 0;
+}
+
+.post-content li {
+  margin: 6px 0;
+  line-height: 1.5;
+}
+
+.post-content strong {
+  font-weight: 600;
+}
+
+.post-content em {
+  font-style: italic;
+}
+
+.post-content a {
+  color: #0a66c2;
+  text-decoration: none;
+}
+
+.post-content a:hover {
+  text-decoration: underline;
+}
+
+/* Prevent any image inside content from stretching */
+.post-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+/* --- Action Buttons --- */
+.post-actions {
+  display: flex;
+  gap: 20px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  color: #0a66c2;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+}
+
+.action-btn:hover {
+  text-decoration: underline;
+}
+
+/* === Fallback for Non-LinkedIn Platforms === */
+.generic-preview {
+  line-height: 1.6;
+  color: #333;
+  font-size: 15px;
+  padding: 0;
+}
+
+.generic-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 12px 0;
+}

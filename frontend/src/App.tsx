@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { generateContent, createItem, addImageForItem, analyzeImage } from "./lib/api";
 import ImageUploader from "./components/ImageUploader/ImageUploader";
 import "./app.css";
+import PlatformPreview from "./components/PlatformPreview/PlatformPreview";
 
 export default function App() {
   const [prompt, setPrompt] = useState("");
@@ -152,17 +153,7 @@ export default function App() {
         </div>
 
         <div className="row two">
-          <label className="field">
-            <span>Mode</span>
-            <select
-              className="input"
-              value={mode}
-              onChange={(e) => setMode(e.target.value as any)}
-            >
-              <option value="social">Social (8B fast)</option>
-              <option value="blog">Blog (70B quality)</option>
-            </select>
-          </label>
+          
 
           <label className="field">
             <span>Word count</span>
@@ -307,56 +298,56 @@ export default function App() {
         </div>
       </section>
 
-      <section className="card output">
-        <div className="output-head">
-          <div className="output-title">
-            <h2>Output</h2>
-            <small className="badge">
-              {mode === "social" ? "Llama-3.1-8B" : "Llama-3.1-70B"}
-            </small>
-          </div>
+<section className="card output">
+  <div className="output-head">
+    <div className="output-title">
+      <h2>Output</h2>
+      
+    </div>
 
-          <div className="output-actions">
-            <button
-              className="btn btn-ghost"
-              onClick={() => out && navigator.clipboard.writeText(out)}
-              disabled={!out}
-              title="Copy to clipboard"
-            >
-              Copy
-            </button>
-            <button
-              className="btn btn-ghost"
-              onClick={() => {
-                if (!out) return;
-                const blob = new Blob([out], { type: "text/markdown" });
-                const a = document.createElement("a");
-                a.href = URL.createObjectURL(blob);
-                a.download = `inspire-${platform}-${mode}.md`;
-                a.click();
-                URL.revokeObjectURL(a.href);
-              }}
-              disabled={!out}
-              title="Download .md"
-            >
-              Download
-            </button>
-          </div>
-        </div>
+    <div className="output-actions">
+      <button
+        className="btn btn-ghost"
+        onClick={() => out && navigator.clipboard.writeText(out)}
+        disabled={!out}
+        title="Copy to clipboard"
+      >
+        Copy
+      </button>
+      <button
+        className="btn btn-ghost"
+        onClick={() => {
+          if (!out) return;
+          const blob = new Blob([out], { type: "text/markdown" });
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = `inspire-${platform}-${mode}.md`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }}
+        disabled={!out}
+        title="Download .md"
+      >
+        Download
+      </button>
+    </div>
+  </div>
 
-        <div className={`output-body ${loading ? "loading" : ""}`}>
-          {loading ? (
-            <>
-              <div className="skeleton" />
-              <div className="skeleton w-80" />
-              <div className="skeleton w-64" />
-              <div className="skeleton w-56" />
-            </>
-          ) : (
-            <pre className="out-pre">{out || "Your content will appear here…"}</pre>
-          )}
-        </div>
-      </section>
+  <div className={`output-body ${loading ? "loading" : ""}`}>
+    {loading ? (
+      <>
+        <div className="skeleton" />
+        <div className="skeleton w-80" />
+        <div className="skeleton w-64" />
+        <div className="skeleton w-56" />
+      </>
+    ) : out ? (
+      <PlatformPreview content={out} platform={platform} />
+    ) : (
+      <p className="placeholder-text">Your content will appear here…</p>
+    )}
+  </div>
+</section>
 
       <footer className="footer">
         <span>© InspireAI — built with FastAPI + Vite + Groq</span>

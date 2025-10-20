@@ -45,7 +45,7 @@ app.add_middleware(
 # --- Groq config ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "llama-3.1-8b-instant")
-BLOG_MODEL = os.getenv("BLOG_MODEL", "llama-3.1-70b-versatile")
+BLOG_MODEL = os.getenv("BLOG_MODEL", "llama-3.1-8b-instant")
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 # --- Startup: ensure DB schema exists ---
