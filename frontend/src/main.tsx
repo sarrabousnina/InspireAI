@@ -14,6 +14,7 @@ import Library from "./pages/Library/Library";
 import AgentChatPage from "./pages/AgentChat/AgentChat";
 import Login from "./pages/Login/Login";
 import SignUp from "./pages/SignUp/SignUp";
+import HomePage from "./pages/Homepage";
 import "./app.css";
 
 // Protect routes: redirect to /login if not authenticated
@@ -41,7 +42,15 @@ const router = createBrowserRouter([
     path: "/",
     element: <RootLayout />,
     children: [
-      // 🔑 PROTECT THE HOME ROUTE — this was missing before!
+            {
+        path: "homepage",
+        element: (
+            <HomePage />
+        ),
+      },
+
+
+
       {
         index: true,
         element: (

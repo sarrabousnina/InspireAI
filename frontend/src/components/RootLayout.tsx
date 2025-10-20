@@ -7,7 +7,7 @@ export default function RootLayout() {
   const location = useLocation();
 
   // Hide sidebar on auth pages
-  const hideSidebar = ["/login", "/signup"].includes(location.pathname);
+  const hideSidebar = ["/login", "/signup", "/homepage"].includes(location.pathname);
 
   return (
     <>
