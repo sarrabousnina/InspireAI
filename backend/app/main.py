@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi import FastAPI, HTTPException, Depends, Security, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, Field
@@ -14,7 +14,14 @@ from . import images
 import json
 from fastapi.staticfiles import StaticFiles
 from .agent import router as agent_router
-
+from .auth import (
+    verify_password,
+    create_access_token,
+    verify_google_token,
+    get_or_create_google_user,
+    get_db,
+)
+from sqlalchemy.orm import Session
 
 from .db import ENGINE, SessionLocal, init_db, get_db
 # --- Groq LLM client ---
@@ -30,6 +37,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 app = FastAPI(title="InspireAI API", version="1.0.0")
 
 app.include_router(agent_router, prefix="/api")
+
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # --- CORS ---
@@ -368,5 +376,25 @@ def duplicate_item(id: str):
         raise HTTPException(404, "Not found")
     return row
 
-
+@app.post("/api/auth/google")
+def google_login(id_token: str = Body(..., embed=True), db: Session = Depends(get_db)):
+    # 1. Verify Google ID token
+    google_user = verify_google_token(id_token)
+    
+    # 2. Get or create user in DB
+    user = get_or_create_google_user(
+        db,
+        email=google_user["email"],
+        name=google_user["name"],
+        picture=google_user["picture"]
+    )
+    
+    # 3. Create your JWT
+    token = create_access_token({"user_id": str(user.id)})
+    
+    return {
+        "access_token": token,
+        "user_id": str(user.id),
+        "token_type": "bearer"
+    }
 
