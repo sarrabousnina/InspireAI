@@ -49,11 +49,11 @@ async def chat_with_agent(
     msg_lower = request.message.strip().lower()
     is_greeting = msg_lower in ["hi", "hello", "hey", "yo", "hola", "bonjour", "greetings"]
 
-    blogs = []
+    items = []
     thinking_steps = []
 
     if not is_greeting:
-        # ✅ Fetch ALL content for user (not just blogs)
+        # ✅ Fetch ALL content for user (social + blog), PostgreSQL-safe
         try:
             with ENGINE.begin() as conn:
                 result = conn.execute(
@@ -64,38 +64,51 @@ async def chat_with_agent(
                         ORDER BY created_at DESC
                         LIMIT 5
                     """),
-                    {"user_id": user_id}
+                    {"user_id": user_id}  # plain string
                 ).mappings().all()
-                blogs = [dict(row) for row in result]
-                logger.info(f"Fetched {len(blogs)} items for user {user_id}")
-                thinking_steps.append(f"✅ Found {len(blogs)} recent item(s)")
+                items = [dict(row) for row in result]
+                logger.info(f"Fetched {len(items)} items for user {user_id}")
+                thinking_steps.append(f"✅ Found {len(items)} recent item(s)")
         except Exception as e:
             logger.error(f"DB error fetching items: {e}")
             thinking_steps.append("⚠️ Could not load your content history")
 
-    # Build context
-    blog_context = ""
-    if blogs:
-        blog_context = "Your recent content:\n"
-        for b in blogs:
-            kind = "Blog" if b['mode'] == 'blog' else "Social post"
-            title = b.get('title') or 'Untitled'
-            preview = b['content'][:180].replace('\n', ' ').replace('"', '').replace("'", "")
-            blog_context += f"- [{kind}] '{title}': {preview}...\n"
+    # Build clean plain-text context (no Markdown)
+    content_context = ""
+    if items:
+        content_context = "📝 Here's what you've written recently:\n\n"
+        for i, item in enumerate(items, 1):
+            kind = "Blog" if item['mode'] == 'blog' else "Social Post"
+            title = item.get('title') or 'Untitled'
+            preview = item['content'][:200].replace('\n', ' ').replace('"', '').replace("'", "")
+            content_context += (
+                f"{i}. {title}\n"
+                f"   Type: {kind}\n"
+                f"   Preview: {preview}...\n"
+            )
+            if item.get('created_at'):
+                try:
+                    date_str = item['created_at'].strftime('%b %d, %Y at %I:%M %p')
+                    content_context += f"   Created: {date_str}\n"
+                except:
+                    pass
+            content_context += "\n"
     else:
-        blog_context = "You have no content yet."
+        content_context = "You haven't written anything yet. Start creating content to see it here!"
 
     # System prompt with ReAct transparency
     system_msg = (
         "You are a helpful AI assistant for InspireAI. "
-        "Be transparent: show reasoning before final answer. Format:\n"
-        "🤔 [thought]\n🔍 [action]\n✅ Final Answer: [...]\n\n"
+        "Be transparent: show your reasoning before your final answer. Format:\n"
+        "🤔 [Your internal thought]\n"
+        "🔍 [Any action taken]\n"
+        "✅ Final Answer: [Your helpful response]\n\n"
     )
 
     if is_greeting:
         system_msg += "This is a greeting. Respond briefly and warmly. Do not mention content."
     else:
-        system_msg += f"Use this context:\n{blog_context}"
+        system_msg += f"Use this context:\n{content_context}"
 
     # Generate response
     try:
@@ -112,15 +125,20 @@ async def chat_with_agent(
 
         raw = completion.choices[0].message.content.strip()
 
-        if is_greeting:
-            if "✅ Final Answer:" in raw:
-                response = raw.split("✅ Final Answer:")[1].strip()
-            else:
-                response = raw
+        # Split thinking steps from final answer
+        if "✅ Final Answer:" in raw:
+            parts = raw.split("✅ Final Answer:", 1)
+            thinking_part = parts[0].strip()
+            final_answer = parts[1].strip()
         else:
-            response = "\n".join(thinking_steps) + "\n\n" + raw
+            thinking_part = raw
+            final_answer = ""
 
-        return {"response": response}
+        # Return both parts separately
+        return {
+            "thinking": thinking_part,
+            "final_answer": final_answer
+        }
 
     except Exception as e:
         logger.error(f"Agent LLM error: {e}")

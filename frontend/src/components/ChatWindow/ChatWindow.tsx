@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  type?: 'thinking' | 'final'; // 👈 Add type for better rendering
 }
 
 const ChatWindow: React.FC = () => {
@@ -52,7 +53,21 @@ const ChatWindow: React.FC = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
+        // Add thinking steps first
+        if (data.thinking) {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: data.thinking, type: 'thinking' }
+          ]);
+        }
+
+        // Then add final answer
+        if (data.final_answer) {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: data.final_answer, type: 'final' }
+          ]);
+        }
       } else {
         throw new Error(data.detail || 'Failed to get response from agent');
       }
@@ -95,9 +110,14 @@ const ChatWindow: React.FC = () => {
               margin: '0.5rem 0',
               padding: '0.75rem',
               borderRadius: '8px',
-              backgroundColor: msg.role === 'user' ? '#e3f2fd' : '#f5f5f5',
+              backgroundColor: msg.role === 'user' ? '#e3f2fd' : (
+                msg.type === 'thinking' ? '#fffacd' : '#f5f5f5'
+              ),
               maxWidth: '80%',
               wordBreak: 'break-word',
+              fontSize: msg.type === 'thinking' ? '0.9rem' : '1rem',
+              fontStyle: msg.type === 'thinking' ? 'italic' : 'normal',
+              borderLeft: msg.type === 'thinking' ? '4px solid #ffc107' : 'none',
             }}
           >
             {msg.content}
