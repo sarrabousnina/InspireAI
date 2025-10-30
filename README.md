@@ -35,7 +35,6 @@ Built with a modern tech stack and designed for scalability, inspireAI combines 
 
 ### Database
 - PostgreSQL
-
 ---
 
 ## 🚀 Getting Started
